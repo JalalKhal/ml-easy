@@ -5,7 +5,7 @@ import os
 from datetime import time
 from typing import Dict, Any, Optional
 
-from recipes.step.enum import StepStatus, StepExecutionStateKeys
+from recipes.steps.enum import StepStatus, StepExecutionStateKeys
 from recipes.utils import get_recipe_name
 
 _logger = logging.getLogger(__name__)

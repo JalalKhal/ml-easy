@@ -5,8 +5,8 @@ from typing import List, Dict, Any, Generic, TypeVar
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
 from recipes.io.RecipeYAMLoader import YamlLoader, RecipeYAMLoader
-from recipes.recipes.config import RecipePathsConfig, RecipeConfig
-from recipes.step.step import BaseStep
+from recipes.recipes.config import RecipePathsConfig
+from recipes.steps import BaseStep
 from recipes.utils import get_recipe_name, _get_class_from_string
 
 _logger = logging.getLogger(__name__)
