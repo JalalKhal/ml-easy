@@ -1,18 +1,20 @@
 import abc
 import logging
-from typing import List, Dict, Any, Generic, TypeVar
+from typing import List, Dict, Any, Generic, TypeVar, Type
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
+from recipes.interfaces.config import Context, BaseStepConfig
+from recipes.interfaces.step import BaseStep
 from recipes.io.RecipeYAMLoader import YamlLoader, RecipeYAMLoader
-from recipes.recipes.config import RecipePathsConfig
-from recipes.steps import BaseStep
-from recipes.utils import get_recipe_name, _get_class_from_string
+from recipes.steps.cards_config import StepMessage
+from recipes.steps.steps_config import RecipePathsConfig
+from recipes.utils import get_recipe_name, _get_class_from_string, _get_or_create_execution_directory
 
 _logger = logging.getLogger(__name__)
 
 
-U = TypeVar('U', bound="RecipeConfig")
+U = TypeVar('U', bound="BaseRecipeConfig")
 
 
 class BaseRecipe(abc.ABC, Generic[U]):
@@ -31,28 +33,36 @@ class BaseRecipe(abc.ABC, Generic[U]):
                 {recipe_root_path}/profiles/{profile}.yaml is read and merged with
                 recipe.yaml to generate the configuration to run the recipe.
         """
-        for field, value in conf:
-            setattr(self, field, value)
-
-        #self.steps: List[BaseStep] = self._resolve_recipe_steps()
+        self._conf:U = conf
+        self._context: Context = Context(recipe_root_path = conf.recipe_root_path)
+        self.steps: List[BaseStep] = self._resolve_recipe_steps()
 
     def _resolve_recipe_steps(self) -> List[BaseStep]:
-        """
-        Constructs and returns all recipe step objects from the recipe configuration.
-        """
-        return [
-            s.from_recipe_config(self._config, self._recipe_root_path)
-            for s in self._get_step_classes()
-        ]
+        steps: List[BaseStep] = []
+        for step_name in self._conf.steps.__fields__.keys():
+            step_class: Type[BaseStep] = self.recipe_steps[step_name]
+            step_config: BaseStepConfig = getattr(self._conf.steps, step_name)
+            steps.append(step_class(step_config, self._context))
+        return steps
 
+    @property
     @abc.abstractmethod
-    def _get_step_classes(self):
-        """
-        Returns a list of step classes defined in the recipe.
-
-        Concrete recipe class should implement this method.
-        """
+    def recipe_steps(self) -> Dict[str, Type[BaseStep]]:
         pass
+
+
+    def run(self) -> StepMessage:
+        """
+        Run the entire recipe if a step is not specified.
+        Args:
+        Returns:
+            None
+        """
+        message = StepMessage()
+        _get_or_create_execution_directory(self.steps)
+        for step in self.steps:
+            message = step.run(message)
+        return message
 
 
 class Recipe:

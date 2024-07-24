@@ -1,21 +1,24 @@
-import abc
+import importlib
 import logging
-from typing import Any
+from typing import Type, TypeVar, Generic
 
+from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
-from recipes.steps.cards_config import IngestCard, Context
-from recipes.steps.steps_config import IngestConfig
-from recipes.utils import get_step_output_path
+from recipes.steps.cards_config import IngestCard, StepMessage
+from recipes.steps.ingest.datasets import Dataset
+from recipes.utils import get_step_output_path, get_step_component_output_path
 
 _logger = logging.getLogger(__name__)
 
 
+U = TypeVar("U", bound="BaseIngestConfig")
 
+class IngestStep(BaseStep[U, IngestCard], Generic[U]):
+    _CSV_SEPARATOR = ','
+    _ENCODING = "utf-8"
 
-class IngestStep(BaseStep[IngestConfig, IngestCard], metaclass=abc.ABCMeta):
-    def __init__(self, ingest_config: IngestConfig, context: Context):
-        super().__init__(ingest_config)
-        self._context = context
+    def __init__(self, ingest_config: U, context: Context):
+        super().__init__(ingest_config, context)
 
     @property
     def name(self) -> str:
@@ -26,16 +29,22 @@ class IngestStep(BaseStep[IngestConfig, IngestCard], metaclass=abc.ABCMeta):
         return 'ingest'
 
     def _create_card(self) -> IngestCard:
-        step_output_path = get_step_output_path(self._context.recipe_root_path, self.name)
+        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
         return IngestCard(step_output_path = step_output_path)
 
-    def _run(self, card: Any) -> IngestCard:
-        return self.card
-
-
-
-
-
-
+    def _run(self, message: StepMessage) -> StepMessage:
+        datasets_module: str = "recipes.steps.ingest.datasets"
+        dataset_class: Type[Dataset] = getattr(importlib.import_module(datasets_module), self.conf.framework.value)
+        dataset: Dataset = (
+            dataset_class.read_csv(
+            self.conf.location,
+            self._CSV_SEPARATOR,
+            self._ENCODING)
+        )
+        self.card.dataset_location = get_step_component_output_path(self.card.step_output_path,
+                                                                    str(dataset))
+        dataset.write_csv(self.card.dataset_location, separator = self._CSV_SEPARATOR)
+        message.ingest = self.card
+        return message
 
 

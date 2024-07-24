@@ -2,15 +2,18 @@ import abc
 import json
 import logging
 import os
-from datetime import time
-from typing import Dict, Any, Optional
+import time
+import traceback
+from typing import Dict, Any, Optional, TypeVar, Generic
 
-from recipes.steps.enum import StepStatus, StepExecutionStateKeys
-from recipes.utils import get_recipe_name
+from recipes.enum import StepExecutionStateKeys, StepStatus
+from recipes.interfaces.config import Context
+from recipes.steps.cards_config import StepMessage
 
 _logger = logging.getLogger(__name__)
 
-
+U = TypeVar('U', bound="BaseStepConfig")
+V = TypeVar('V', bound="BaseCard")
 
 class StepExecutionState:
     """
@@ -37,9 +40,9 @@ class StepExecutionState:
         Creates a dictionary representation of the step execution state.
         """
         return {
-            StepExecutionStateKeys.KEY_STATUS: self.status.value,
-            StepExecutionStateKeys.KEY_LAST_UPDATED_TIMESTAMP: self.last_updated_timestamp,
-            StepExecutionStateKeys.KEY_STACK_TRACE: self.stack_trace,
+            StepExecutionStateKeys.KEY_STATUS.name: self.status.value,
+            StepExecutionStateKeys.KEY_LAST_UPDATED_TIMESTAMP.name: self.last_updated_timestamp,
+            StepExecutionStateKeys.KEY_STACK_TRACE.name: self.stack_trace,
         }
 
     @classmethod
@@ -54,24 +57,23 @@ class StepExecutionState:
         )
 
 
-class BaseStep(metaclass=abc.ABCMeta):
+class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     """
     Base class representing a step in an MLflow Recipe
     """
 
     _EXECUTION_STATE_FILE_NAME = "execution_state.json"
 
-    def __init__(self, step_config: Dict[str, Any], recipe_root: str):
+    def __init__(self, step_config: U, context: Context):
         """
         Args:
             step_config: Dictionary of the config needed to run/implement the step.
             recipe_root: String file path to the directory where step are defined.
         """
-        self.step_config = step_config
-        self.recipe_root = recipe_root
-        self.recipe_name = get_recipe_name(recipe_root_path=recipe_root)
-        self.task = self.step_config.get("recipe", "regression/v1").rsplit("/", 1)[0]
-        self.step_card = None
+        self.conf = step_config
+        self.context = context
+        self.card: V = self._create_card()
+
 
     def __str__(self):
         return f"Step:{self.name}"
@@ -84,39 +86,20 @@ class BaseStep(metaclass=abc.ABCMeta):
         downstream by the execution engine to create step-specific directory structures.
         """
 
-    def run(self, output_directory: str):
-        """
-        Executes the step by running common setup operations and invoking
-        step-specific code (as defined in ``_run()``).
+    def run(self, message: StepMessage) -> StepMessage:
 
-        Args:
-            output_directory: String file path to the directory where step
-                outputs should be stored.
-        """
         _logger.info(f"Running step {self.name}...")
-        start_timestamp = time.time()
         try:
-            self._update_status(status=StepStatus.RUNNING, output_directory=output_directory)
-
-
-
-            self._validate_and_apply_step_config()
-            self.step_card = self._run(output_directory=output_directory)
-            self._update_status(status=StepStatus.SUCCEEDED, output_directory=output_directory)
+            self._update_status(status=StepStatus.RUNNING, output_directory=self.card.step_output_path)
+            message = self._run(message)
+            self._update_status(status=StepStatus.SUCCEEDED, output_directory=self.card.step_output_path)
+            return message
         except Exception:
             stack_trace = traceback.format_exc()
             self._update_status(
-                status=StepStatus.FAILED, output_directory=output_directory, stack_trace=stack_trace
-            )
-            self.step_card = FailureCard(
-                recipe_name=self.recipe_name,
-                step_name=self.name,
-                failure_traceback=stack_trace,
-                output_directory=output_directory,
+                status=StepStatus.FAILED, output_directory=self.card.step_output_path, stack_trace=stack_trace
             )
             raise
-        finally:
-            self._serialize_card(start_timestamp, output_directory)
 
     def _update_status(
             self, status: StepStatus, output_directory: str, stack_trace: Optional[str] = None
@@ -126,5 +109,24 @@ class BaseStep(metaclass=abc.ABCMeta):
         )
         with open(os.path.join(output_directory, BaseStep._EXECUTION_STATE_FILE_NAME), "w") as f:
             json.dump(execution_state.to_dict(), f)
+
+    @abc.abstractmethod
+    def _run(self, message: StepMessage) -> StepMessage:
+        """
+        This function is responsible for executing the step, writing outputs
+        to the specified directory, and returning results to the user. It
+        is invoked by the internal step runner.
+
+        Args:
+            output_directory: String file path to the directory where step outputs
+                should be stored.
+        """
+
+    @abc.abstractmethod
+    def _create_card(self) -> V:
+        pass
+
+
+
 
 

@@ -2,19 +2,11 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from recipes.interfaces.config import BaseCard
 
 
-class RecipePathsConfig(BaseModel):
-    recipe_root_path: str
-    profile: Optional[str] = None
+class IngestCard(BaseCard):
+    dataset_location: Optional[str] = None
 
-class BaseRecipeConfig(BaseModel):
-    recipe: str
-
-
-class BaseStepConfig(BaseModel):
-    recipe_config: BaseRecipeConfig
-    paths_config: RecipePathsConfig
-
-class BaseCard(BaseModel):
-    output_directory: str
+class StepMessage(BaseModel):
+    ingest: Optional[IngestCard] = None

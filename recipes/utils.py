@@ -1,104 +1,22 @@
 import codecs
+import hashlib
 import importlib
 import json
 import logging
 import os
 import pathlib
 import posixpath
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
+from pydantic import BaseModel
 from yaml import CSafeLoader as YamlSafeLoader
 import yaml
 
-ENCODING = "utf-8"
+from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME
+from recipes.enum import MLFlowErrorCode
+from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
+from recipes.exceptions import MlflowException
 
-_RECIPE_CONFIG_FILE_NAME = "recipe.yaml"
-_RECIPE_PROFILE_DIR = "profiles"
-_logger = logging.getLogger(__name__)
-
-
-class UniqueKeyLoader(YamlSafeLoader):
-    def construct_mapping(self, node, deep=False):
-        mapping = set()
-        for key_node, _ in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if key in mapping:
-                raise ValueError(f"Duplicate '{key}' key found in YAML.")
-            mapping.add(key)
-        return super().construct_mapping(node, deep)
-
-
-def merge_dicts(dict_a, dict_b, raise_on_duplicates=True):
-    """This function takes two dictionaries and returns one singular merged dictionary.
-
-    Args:
-        dict_a: The first dictionary.
-        dict_b: The second dictionary.
-        raise_on_duplicates: If True, the function raises ValueError if there are duplicate keys.
-            Otherwise, duplicate keys in `dict_b` will override the ones in `dict_a`.
-
-    Returns:
-        A merged dictionary.
-    """
-    duplicate_keys = dict_a.keys() & dict_b.keys()
-    if raise_on_duplicates and len(duplicate_keys) > 0:
-        raise ValueError(f"The two merging dictionaries contain duplicate keys: {duplicate_keys}.")
-    return {**dict_a, **dict_b}
-
-
-def read_yaml(root, file_name):
-    """Read data from yaml file and return as dictionary
-
-    Args:
-        root: Directory name.
-        file_name: File name. Expects to have '.yaml' extension.
-
-    Returns:
-        Data in yaml file as dictionary.
-    """
-    file_path = os.path.join(root, file_name)
-    with codecs.open(file_path, mode="r", encoding=ENCODING) as yaml_file:
-        return yaml.load(yaml_file, Loader=YamlSafeLoader)
-
-
-def render_and_merge_yaml(root, template_name, context_name):
-    """Renders a Jinja2-templated YAML file based on a YAML context file, merge them, and return
-    result as a dictionary.
-
-    Args:
-        root: Root directory of the YAML files.
-        template_name: Name of the template file.
-        context_name: Name of the context file.
-
-    Returns:
-        Data in yaml file as dictionary.
-    """
-    from jinja2 import FileSystemLoader, StrictUndefined
-    from jinja2.sandbox import SandboxedEnvironment
-
-    template_path = os.path.join(root, template_name)
-    context_path = os.path.join(root, context_name)
-
-    j2_env = SandboxedEnvironment(
-        loader=FileSystemLoader(root, encoding=ENCODING),
-        undefined=StrictUndefined,
-        line_comment_prefix="#",
-    )
-
-    def from_json(input_var):
-        with open(input_var, encoding="utf-8") as f:
-            return json.load(f)
-
-    j2_env.filters["from_json"] = from_json
-    # Compute final source of context file (e.g. my-profile.yml), applying Jinja filters
-    # like from_json as needed to load context information from files, then load into a dict
-    context_source = j2_env.get_template(context_name).render({})
-    context_dict = yaml.load(context_source, Loader=UniqueKeyLoader) or {}
-
-    # Substitute parameters from context dict into template
-    source = j2_env.get_template(template_name).render(context_dict)
-    rendered_template_dict = yaml.load(source, Loader=UniqueKeyLoader)
-    return rendered_template_dict
 
 def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
     """
@@ -120,73 +38,126 @@ def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
     """
     return os.path.basename(recipe_root_path)
 
-
-def get_recipe_root_path() -> str:
-    """
-    Obtains the path of the recipe corresponding to the current working directory,
-    Returns:
-        The absolute path of the recipe root directory on the local filesystem.
-    """
-    # In the release version of MLflow Recipes, each recipe will be its own git repository.
-    # To improve developer velocity for now, we choose to treat a recipe as a directory, which
-    # may be a subdirectory of a git repo. The logic for resolving the repository root for
-    # development purposes finds the first `recipe.yaml` file by traversing up the directory
-    # tree, while the release version will find the recipe repository root (commented out below)
-    curr_dir_path = pathlib.Path.cwd()
-
-    while True:
-        recipe_yaml_path_to_check = curr_dir_path / _RECIPE_CONFIG_FILE_NAME
-        if recipe_yaml_path_to_check.exists():
-            return str(curr_dir_path.resolve())
-        elif curr_dir_path != curr_dir_path.parent:
-            curr_dir_path = curr_dir_path.parent
-        else:
-            # If curr_dir_path == curr_dir_path.parent,
-            # we have reached the root directory without finding
-            # the desired recipe.yaml file
-            raise Exception(f"Failed to find {_RECIPE_CONFIG_FILE_NAME}!")
-
-
-def get_recipe_config(
-        recipe_root_path: Optional[str] = None, profile: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Obtains a dictionary representation of the configuration for the specified recipe.
-
-    Args:
-        recipe_root_path: The absolute path of the recipe root directory on the local
-            filesystem. If unspecified, the recipe root directory is resolved from the current
-            working directory.
-        profile: The name of the profile under the `profiles` directory to use, e.g. "dev" to
-            use configs from "profiles/dev.yaml".
-
-    Raises:
-        MlflowException: If the specified ``recipe_root_path`` is not a recipe root directory
-            or if ``recipe_root_path`` is ``None`` and the current working directory does not
-            correspond to a recipe.
-
-    Returns:
-        The configuration of the specified recipe.
-    """
-    recipe_root_path = recipe_root_path or get_recipe_root_path()
-    try:
-        if profile:
-            # Jinja expects template names in posixpath format relative to environment root,
-            # so use posixpath to construct the relative path here.
-            profile_relpath = posixpath.join(_RECIPE_PROFILE_DIR, f"{profile}.yaml")
-            profile_file_path = os.path.join(
-                recipe_root_path, _RECIPE_PROFILE_DIR, f"{profile}.yaml"
-            )
-            return render_and_merge_yaml(
-                recipe_root_path, _RECIPE_CONFIG_FILE_NAME, profile_relpath
-            )
-        else:
-            return read_yaml(recipe_root_path, _RECIPE_CONFIG_FILE_NAME)
-    except Exception as e:
-        _logger.error("Failed to get recipe config", exc_info=e)
-        raise
-
-
 def _get_class_from_string(fully_qualified_class_name):
     module, class_name = fully_qualified_class_name.rsplit(".", maxsplit=1)
     return getattr(importlib.import_module(module), class_name)
+
+def load_config(obj: Any, config: Any):
+    for field, value in config.__dict__.items():
+        setattr(obj, field, value)
+
+
+
+def _get_execution_directory_basename(recipe_root_path):
+    """
+    Obtains the basename of the execution directory corresponding to the specified recipe.
+
+    Args:
+        recipe_root_path: The absolute path of the recipe root directory on the local
+            filesystem.
+
+    Returns:
+        The basename of the execution directory corresponding to the specified recipe.
+    """
+    return hashlib.sha256(os.path.abspath(recipe_root_path).encode("utf-8")).hexdigest()
+
+def get_or_create_base_execution_directory(recipe_root_path: str) -> str:
+    """
+    Obtains the path of the execution directory on the local filesystem corresponding to the
+    specified recipe. The directory is created if it does not exist.
+
+    Args:
+        recipe_root_path: The absolute path of the recipe root directory on the local
+            filesystem.
+
+    Returns:
+        The path of the execution directory on the local filesystem corresponding to the
+        specified recipe.
+    """
+    execution_directory_basename = _get_execution_directory_basename(
+        recipe_root_path=recipe_root_path
+    )
+
+    execution_dir_path = os.path.abspath(
+        MLFLOW_RECIPES_EXECUTION_DIRECTORY.get()
+        or os.path.join(os.path.expanduser("~"), ".mlflow", "recipes", execution_directory_basename)
+    )
+    os.makedirs(execution_dir_path, exist_ok=True)
+    return execution_dir_path
+
+def _get_step_output_directory_path(execution_directory_path: str, step_name: str) -> str:
+    """
+    Obtains the path of the local filesystem directory containing outputs for the specified step,
+    which may or may not exist.
+
+    Args:
+        execution_directory_path: The absolute path of the execution directory on the local
+            filesystem for the relevant recipe. The Makefile is created in this directory.
+        step_name: The name of the recipe step for which to obtain the output directory path.
+
+    Returns:
+        The absolute path of the local filesystem directory containing outputs for the specified
+        step.
+    """
+    return os.path.abspath(
+        os.path.join(
+            execution_directory_path,
+            STEPS_SUBDIRECTORY_NAME,
+            step_name,
+            STEP_OUTPUTS_SUBDIRECTORY_NAME,
+        )
+    )
+
+def get_step_output_path(recipe_root_path: str, step_name: str) -> str:
+    """
+    Obtains the absolute path of the specified step output on the local filesystem. Does
+    not check the existence of the output.
+
+    Args:
+        recipe_root_path: The absolute path of the recipe root directory on the local
+            filesystem.
+        step_name: The name of the recipe step containing the specified output.
+        relative_path: The relative path of the output within the output directory
+            of the specified recipe step.
+
+    Returns:
+        The absolute path of the step output on the local filesystem, which may or may
+        not exist.
+    """
+    execution_dir_path = get_or_create_base_execution_directory(recipe_root_path=recipe_root_path)
+    step_outputs_path = _get_step_output_directory_path(
+        execution_directory_path=execution_dir_path,
+        step_name=step_name,
+    )
+    return os.path.abspath(os.path.join(step_outputs_path))
+
+
+def get_state_output_dir(step_path: str, state_file_name: str) -> str:
+    return os.path.join(step_path, state_file_name)
+
+def get_step_component_output_path(step_path: str, component_name: str, extension = ".csv") -> str:
+    return os.path.join(step_path,
+                        hashlib.sha256(component_name.encode()).hexdigest() + extension)
+
+
+def _get_or_create_execution_directory(recipe_steps) -> str:
+    """
+    Obtains the path of the execution directory on the local filesystem corresponding to the
+    specified recipe, creating the execution directory and its required contents if they do
+    not already exist.
+    Args:
+
+        recipe_steps: A list of all the steps contained in the specified recipe.
+    Returns:
+        The absolute path of the execution directory on the local filesystem for the specified
+        recipe.
+    """
+    if len(recipe_steps) == 0:
+        raise ValueError("No steps provided")
+    else:
+        recipe_root_path = recipe_steps[0].context.recipe_root_path
+        execution_dir_path = get_or_create_base_execution_directory(recipe_root_path)
+        for step in recipe_steps:
+            step_output_subdir_path = _get_step_output_directory_path(execution_dir_path, step.name)
+            os.makedirs(step_output_subdir_path, exist_ok=True)
+        return execution_dir_path
