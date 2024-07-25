@@ -1,8 +1,8 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Dict, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from recipes.enum import Framework
+from recipes.enum import ScoreType
 from recipes.interfaces.config import BaseStepConfig
 
 
@@ -12,35 +12,40 @@ class RecipePathsConfig(BaseModel):
 
 
 class BaseIngestConfig(BaseStepConfig):
+    ingest_fn: str
     location: str
-    framework: Framework
+    sep: str
+    encoding: str
 
 
 class BaseSplitConfig(BaseStepConfig):
-    split_ratios: List[float] = Field(default=[0.75, 0.125, 0.125])
-    post_split_filter_method: Optional[str] = Field(default="create_dataset_filter")
+    split_fn: str
+    split_ratios: List[float]
 
 
 class BaseTransformConfig(BaseStepConfig):
-    using: str = Field(default="custom")
-    transformer_method: Optional[str] = Field(default="transformer_fn")
+    transformer_fn: str
 
+class Score(BaseModel):
+    name: ScoreType
+    params: Dict[str, Any]
 
 class BaseTrainConfig(BaseStepConfig):
-    using: str
-
+    estimator_fn: str
+    loss: str
+    validation_metric: Score
 
 class EvaluateCriteria(BaseStepConfig):
-    metric: str
-    threshold: Union[int, float]
+    metric: Score
+    threshold: Optional[float]
 
 
-class EvaluateConfig(BaseStepConfig):
-    validation_criteria: Optional[List[EvaluateCriteria]] = None
+class BaseEvaluateConfig(BaseStepConfig):
+    validation_criteria: List[EvaluateCriteria] = None
 
 
 class RegisterConfig(BaseStepConfig):
-    allow_non_validated_model: bool = Field(default=False)
+    allow_non_validated_model: bool
 
 
 

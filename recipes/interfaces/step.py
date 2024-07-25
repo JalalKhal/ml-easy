@@ -4,23 +4,25 @@ import logging
 import os
 import time
 import traceback
-from typing import Dict, Any, Optional, TypeVar, Generic
+from typing import Dict, Any, Optional, TypeVar, Generic, Type
 
-from recipes.enum import StepExecutionStateKeys, StepStatus
+from recipes.enum import StepExecutionStateKeys, StepStatus, MLFlowErrorCode
+from recipes.exceptions import MlflowException
 from recipes.interfaces.config import Context
 from recipes.steps.cards_config import StepMessage
+from recipes.utils import get_fully_qualified_module_name_for_step, load_step_function, get_step_fn
 
 _logger = logging.getLogger(__name__)
 
 U = TypeVar('U', bound="BaseStepConfig")
 V = TypeVar('V', bound="BaseCard")
 
+
 class StepExecutionState:
     """
     Represents execution state for a step, including the current status and
     the time of the last status update.
     """
-
 
     def __init__(self, status: StepStatus, last_updated_timestamp: int, stack_trace: str):
         """
@@ -63,6 +65,8 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     """
 
     _EXECUTION_STATE_FILE_NAME = "execution_state.json"
+    _CUSTOM_STEPS_DIR = "steps"
+    _SUFFIX_FN = "_fn"
 
     def __init__(self, step_config: U, context: Context):
         """
@@ -73,7 +77,6 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         self.conf = step_config
         self.context = context
         self.card: V = self._create_card()
-
 
     def __str__(self):
         return f"Step:{self.name}"
@@ -92,6 +95,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         try:
             self._update_status(status=StepStatus.RUNNING, output_directory=self.card.step_output_path)
             message = self._run(message)
+            self.update_message(message)
             self._update_status(status=StepStatus.SUCCEEDED, output_directory=self.card.step_output_path)
             return message
         except Exception:
@@ -110,23 +114,30 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         with open(os.path.join(output_directory, BaseStep._EXECUTION_STATE_FILE_NAME), "w") as f:
             json.dump(execution_state.to_dict(), f)
 
-    @abc.abstractmethod
-    def _run(self, message: StepMessage) -> StepMessage:
-        """
-        This function is responsible for executing the step, writing outputs
-        to the specified directory, and returning results to the user. It
-        is invoked by the internal step runner.
+    def get_step_result(self, from_fn=True) -> Any:
+        if from_fn:
+            step_fn = get_step_fn(self.conf, self._SUFFIX_FN)
+            step_result: Any = load_step_function(self.get_module_name_for_step_function(), step_fn)(self.conf,
+                                                                                                     self.context)
+            return step_result
 
-        Args:
-            output_directory: String file path to the directory where step outputs
-                should be stored.
-        """
+    @classmethod
+    def validate_step_result(cls, obj: Any, class_: Type[Any]):
+        if not isinstance(obj, class_):
+            raise MlflowException(
+                f"{obj.__class__.__name__} should be a {class_} instance",
+                error_code=MLFlowErrorCode.INTERNAL_ERROR,
+            ) from None
 
     @abc.abstractmethod
     def _create_card(self) -> V:
         pass
 
+    def get_module_name_for_step_function(self) -> str:
+        return get_fully_qualified_module_name_for_step(
+            self.context.recipe_root_path,
+            self._CUSTOM_STEPS_DIR,
+            self.name)
 
-
-
-
+    def update_message(self, message: StepMessage) -> None:
+        setattr(message, self.name, self.card)

@@ -1,21 +1,16 @@
-import codecs
 import hashlib
 import importlib
-import json
-import logging
 import os
-import pathlib
-import posixpath
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any, Type, Tuple
 
-from pydantic import BaseModel
-from yaml import CSafeLoader as YamlSafeLoader
-import yaml
-
-from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME
-from recipes.enum import MLFlowErrorCode
+from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME, EXT_PY
+from recipes.enum import MLFlowErrorCode, ScoreType
 from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
 from recipes.exceptions import MlflowException
+from recipes.steps.evaluate.score import Score
+from recipes.steps.ingest.datasets import Dataset
+
+_SCORES_PATH = "recipes.steps.evaluate.score"
 
 
 def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
@@ -38,17 +33,64 @@ def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
     """
     return os.path.basename(recipe_root_path)
 
-def _get_class_from_string(fully_qualified_class_name):
+
+def _get_class_from_string(fully_qualified_class_name) -> Any:
     module, class_name = fully_qualified_class_name.rsplit(".", maxsplit=1)
     return getattr(importlib.import_module(module), class_name)
 
-def load_config(obj: Any, config: Any):
+
+def load_class(fully_qualified_class_name: str) -> Any:
+    try:
+        class_module = _get_class_from_string(fully_qualified_class_name)
+    except Exception as e:
+        if isinstance(e, ModuleNotFoundError):
+            raise MlflowException(
+                f"Failed to find {fully_qualified_class_name}.",
+                error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+            ) from None
+        else:
+            raise MlflowException(
+                f"Failed to construct {fully_qualified_class_name}. Error: {e!r}",
+                error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+            ) from None
+    return class_module
+
+
+def get_fully_qualified_module_name_for_step(recipe_root_path: str, step_dir: str, step_file_name: str):
+    fully_qualified_item: str = os.path.join(recipe_root_path,
+                                             step_dir,
+                                             step_file_name + EXT_PY
+                                             )
+    return fully_qualified_item
+
+
+def load_step_function(file_path: str, function_name: str) -> Any:
+    if not os.path.exists(file_path):
+        raise MlflowException(
+            f"File {file_path} not found.",
+            error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+        )
+
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    try:
+        return getattr(module, function_name)
+    except AttributeError:
+        raise MlflowException(
+            f"Function {function_name} not found in file {file_path}.",
+            error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+        )
+
+
+def load_config(obj: Any, config: Any) -> None:
     for field, value in config.__dict__.items():
         setattr(obj, field, value)
 
 
-
-def _get_execution_directory_basename(recipe_root_path):
+def _get_execution_directory_basename(recipe_root_path) -> str:
     """
     Obtains the basename of the execution directory corresponding to the specified recipe.
 
@@ -60,6 +102,7 @@ def _get_execution_directory_basename(recipe_root_path):
         The basename of the execution directory corresponding to the specified recipe.
     """
     return hashlib.sha256(os.path.abspath(recipe_root_path).encode("utf-8")).hexdigest()
+
 
 def get_or_create_base_execution_directory(recipe_root_path: str) -> str:
     """
@@ -85,6 +128,7 @@ def get_or_create_base_execution_directory(recipe_root_path: str) -> str:
     os.makedirs(execution_dir_path, exist_ok=True)
     return execution_dir_path
 
+
 def _get_step_output_directory_path(execution_directory_path: str, step_name: str) -> str:
     """
     Obtains the path of the local filesystem directory containing outputs for the specified step,
@@ -107,6 +151,7 @@ def _get_step_output_directory_path(execution_directory_path: str, step_name: st
             STEP_OUTPUTS_SUBDIRECTORY_NAME,
         )
     )
+
 
 def get_step_output_path(recipe_root_path: str, step_name: str) -> str:
     """
@@ -135,7 +180,8 @@ def get_step_output_path(recipe_root_path: str, step_name: str) -> str:
 def get_state_output_dir(step_path: str, state_file_name: str) -> str:
     return os.path.join(step_path, state_file_name)
 
-def get_step_component_output_path(step_path: str, component_name: str, extension = ".csv") -> str:
+
+def get_step_component_output_path(step_path: str, component_name: str, extension=".csv") -> str:
     return os.path.join(step_path,
                         hashlib.sha256(component_name.encode()).hexdigest() + extension)
 
@@ -161,3 +207,22 @@ def _get_or_create_execution_directory(recipe_steps) -> str:
             step_output_subdir_path = _get_step_output_directory_path(execution_dir_path, step.name)
             os.makedirs(step_output_subdir_path, exist_ok=True)
         return execution_dir_path
+
+
+def get_step_fn(conf: Any, suffix: str) -> str:
+    for (attr, value) in vars(conf).items():
+        if isinstance(value, str) and value.endswith(suffix):
+            return value
+
+    raise MlflowException(
+        f"{conf.__class__.__name__} should contain one attribute for the step function",
+        error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+    )
+
+def get_score_class(score: ScoreType) -> Type[Score]:
+    return load_class(f'{_SCORES_PATH}.{score.name}')
+
+def get_features_target(dataset: Dataset, target_col: str) -> Tuple[Dataset, Dataset]:
+    X: Dataset = dataset.select([c for c in dataset.columns() if c != target_col])
+    y: Dataset = dataset.select([target_col])
+    return X, y

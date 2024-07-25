@@ -14,8 +14,6 @@ _logger = logging.getLogger(__name__)
 U = TypeVar("U", bound="BaseIngestConfig")
 
 class IngestStep(BaseStep[U, IngestCard], Generic[U]):
-    _CSV_SEPARATOR = ','
-    _ENCODING = "utf-8"
 
     def __init__(self, ingest_config: U, context: Context):
         super().__init__(ingest_config, context)
@@ -32,19 +30,6 @@ class IngestStep(BaseStep[U, IngestCard], Generic[U]):
         step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
         return IngestCard(step_output_path = step_output_path)
 
-    def _run(self, message: StepMessage) -> StepMessage:
-        datasets_module: str = "recipes.steps.ingest.datasets"
-        dataset_class: Type[Dataset] = getattr(importlib.import_module(datasets_module), self.conf.framework.value)
-        dataset: Dataset = (
-            dataset_class.read_csv(
-            self.conf.location,
-            self._CSV_SEPARATOR,
-            self._ENCODING)
-        )
-        self.card.dataset_location = get_step_component_output_path(self.card.step_output_path,
-                                                                    str(dataset))
-        dataset.write_csv(self.card.dataset_location, separator = self._CSV_SEPARATOR)
-        message.ingest = self.card
-        return message
+
 
 

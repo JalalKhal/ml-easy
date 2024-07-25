@@ -5,6 +5,7 @@ class MLFlowErrorCode(Enum):
     INTERNAL_ERROR = 1
     INVALID_PARAMETER_VALUE = 2
 
+
 class StepStatus(Enum):
     """
     Represents the execution status of a step.
@@ -40,5 +41,22 @@ class StepExecutionStateKeys(Enum):
     KEY_STACK_TRACE = "recipe_step_stack_trace"
 
 
-class Framework(Enum):
-    POLAR =  "PolarsDataset"
+class EncodingType(Enum):
+    UTF8 = "utf-8"
+    ASCII = "ascii"
+    LATIN1 = "latin-1"
+    UTF16 = "utf-16"
+
+
+class SeparatorType(Enum):
+    COMMA = ","
+    SEMICOLON = ";"
+
+
+class ScoreType(Enum):
+    AccuracyScore = "accuracy_score"
+    F1Score = "f1_score"
+    AUCScore = "auc_score"
+    MAEScore = "mean_absolute_error_score"
+    MSEScore = "mean_squared_error_score"
+    R2Score = "r2_score"

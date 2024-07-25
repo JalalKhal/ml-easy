@@ -4,17 +4,18 @@ This module defines the following routines used by the 'train' step of the regre
 - ``estimator_fn``: Defines the customizable estimator type and parameters that are used
   during training to produce a model recipe.
 """
-from typing import Dict, Any
+
+from recipes.classification.v1.config import ClassificationTrainConfig
+from recipes.interfaces.config import Context
+from recipes.steps.train.models import Model, ScikitModel
 
 
-def estimator_fn(estimator_params: Dict[str, Any] = {}):
+def estimator_fn(conf: ClassificationTrainConfig, context: Context) -> Model:
     """
     Returns an *unfitted* estimator that defines ``fit()`` and ``predict()`` methods.
     The estimator's input and output signatures should be compatible with scikit-learn
     estimators.
     """
-    #
-    # FIXME::OPTIONAL: return a scikit-learn-compatible regression estimator with fine-tuned
-    #                  hyperparameters.
-
-    raise NotImplementedError
+    path = "sklearn.linear_model.LogisticRegression"
+    estimator: ScikitModel = ScikitModel.load_from_library(path, {"max_iter" : 3000})
+    return estimator

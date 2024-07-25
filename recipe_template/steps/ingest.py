@@ -6,19 +6,17 @@ This module defines the following routines used by the 'ingest' step of the regr
 """
 from pandas import DataFrame
 
+from recipes.classification.v1.config import ClassificationIngestConfig
+from recipes.interfaces.config import Context
+from recipes.steps.ingest.datasets import PolarsDataset, Dataset
 
-def load_file_as_dataframe(location: str) -> DataFrame:
-    """
-    Load content from the specified dataset file as a Pandas DataFrame.
 
-    This method is used to load dataset types that are not natively  managed by MLflow Recipes
-    (datasets that are not in Parquet, Delta Table, or Spark SQL Table format). This method is
-    called once for each file in the dataset, and MLflow Recipes automatically combines the
-    resulting DataFrames together.
+def ingest_fn(conf: ClassificationIngestConfig, context: Context) -> Dataset:
+    return PolarsDataset.read_csv(
+        conf.location,
+        conf.sep,
+        conf.encoding
+    )
 
-    :param location: The path to the dataset file.
-    :return: A Pandas DataFrame representing the content of the specified file.
-    """
-    # FIXME::OPTIONAL: implement the handling of non-natively supported file_format.
 
-    raise NotImplementedError
+

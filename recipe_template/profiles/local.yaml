@@ -15,9 +15,10 @@ model_registry:
   model_name: ""
 
 INGEST_CONFIG:
-
+  ingest_fn: "ingest_fn"
   location: "/home/khaldi/Documents/github_repos/refined_mlflow/recipes/test.csv"
-  framework: PolarsDataset
+  sep: ","
+  encoding: "utf-8"
 
 
 

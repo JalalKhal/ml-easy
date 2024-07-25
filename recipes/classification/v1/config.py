@@ -1,25 +1,39 @@
 from recipes.interfaces.config import BaseRecipeConfig, BaseStepsConfig
-from recipes.steps.steps_config import BaseIngestConfig
+from recipes.steps.steps_config import BaseIngestConfig, BaseTransformConfig, BaseSplitConfig, BaseTrainConfig, \
+    BaseEvaluateConfig
 
 
 class ClassificationIngestConfig(BaseIngestConfig):
     pass
 
+class ClassificationTransformConfig(BaseTransformConfig):
+    pass
+
+class ClassificationSplitConfig(BaseSplitConfig):
+    pass
+
+class ClassificationTrainConfig(BaseTrainConfig):
+    pass
+
+
+class ClassificationEvaluateConfig(BaseEvaluateConfig):
+    pass
+
 class ClassificationStepsConfig(BaseStepsConfig):
     ingest: ClassificationIngestConfig
+    transform: ClassificationTransformConfig
+    split: ClassificationSplitConfig
+    train: ClassificationTrainConfig
+    evaluate: ClassificationEvaluateConfig
 
 
 class ClassificationRecipeConfig(BaseRecipeConfig):
-    target_col: str
-    primary_metric: str
     steps: ClassificationStepsConfig
-    # Optional fields
-    # custom_metrics: Optional[List[dict]] = None
+
 
 
 """
     split: SplitConfig
-    transform: TransformConfig
     train: TrainConfig
     evaluate: Optional[EvaluateConfig] = None
     register_: RegisterConfig

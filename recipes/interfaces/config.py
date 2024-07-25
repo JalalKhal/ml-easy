@@ -10,14 +10,17 @@ class BaseStepConfig(BaseModel):
 class BaseStepsConfig(BaseModel):
     pass
 
-class BaseRecipeConfig(BaseModel):
+class Context(BaseModel):
     recipe_root_path: str
+    target_col: str
+
+class BaseRecipeConfig(BaseModel):
     recipe: str
+    context: Context
     steps: BaseStepsConfig
 
 
-class Context(BaseModel):
-    recipe_root_path: str
+
 
 class BaseCard(BaseModel):
     step_output_path: str
