@@ -45,5 +45,9 @@
                   name: "f1_score"
                   params: {"average" : "weighted"}
               threshold: .5
+    register_:
+        register_fn: "register_fn"
+        artifact_path: "/model.pkl"
+        allow_non_validated_model: false
 
 

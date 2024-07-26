@@ -1,10 +1,9 @@
 import logging
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Type
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
-from recipes.steps.cards_config import TransformCard, SplitCard
-from recipes.utils import get_step_output_path
+from recipes.steps.cards_config import SplitCard
 
 _logger = logging.getLogger(__name__)
 
@@ -24,6 +23,9 @@ class SplitStep(BaseStep[U, SplitCard], Generic[U]):
         """
         return 'split'
 
-    def _create_card(self) -> SplitCard:
-        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
-        return SplitCard(step_output_path=step_output_path)
+    @classmethod
+    def card_type(cls) -> Type[SplitCard]:
+        """
+        Returns the type of card to be created for the step.
+        """
+        return SplitCard

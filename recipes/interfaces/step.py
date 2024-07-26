@@ -10,7 +10,8 @@ from recipes.enum import StepExecutionStateKeys, StepStatus, MLFlowErrorCode
 from recipes.exceptions import MlflowException
 from recipes.interfaces.config import Context
 from recipes.steps.cards_config import StepMessage
-from recipes.utils import get_fully_qualified_module_name_for_step, load_step_function, get_step_fn
+from recipes.utils import get_fully_qualified_module_name_for_step, load_step_function, get_step_fn, \
+    get_step_output_path
 
 _logger = logging.getLogger(__name__)
 
@@ -89,6 +90,13 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         downstream by the execution engine to create step-specific directory structures.
         """
 
+    @classmethod
+    @abc.abstractmethod
+    def card_type(cls) -> Type[V]:
+        """
+        Returns the type of card to be created for the step.
+        """
+
     def run(self, message: StepMessage) -> StepMessage:
 
         _logger.info(f"Running step {self.name}...")
@@ -104,6 +112,10 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
                 status=StepStatus.FAILED, output_directory=self.card.step_output_path, stack_trace=stack_trace
             )
             raise
+
+    @abc.abstractmethod
+    def _run(self, message: StepMessage) -> StepMessage:
+        pass
 
     def _update_status(
             self, status: StepStatus, output_directory: str, stack_trace: Optional[str] = None
@@ -129,9 +141,9 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
                 error_code=MLFlowErrorCode.INTERNAL_ERROR,
             ) from None
 
-    @abc.abstractmethod
     def _create_card(self) -> V:
-        pass
+        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
+        return self.card_type()(step_output_path=step_output_path)
 
     def get_module_name_for_step_function(self) -> str:
         return get_fully_qualified_module_name_for_step(
@@ -141,3 +153,5 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
 
     def update_message(self, message: StepMessage) -> None:
         setattr(message, self.name, self.card)
+
+

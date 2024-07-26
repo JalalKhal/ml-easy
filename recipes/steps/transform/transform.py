@@ -1,11 +1,10 @@
 import abc
 import logging
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Type
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
-from recipes.steps.cards_config import StepMessage, TransformCard
-from recipes.utils import get_step_output_path
+from recipes.steps.cards_config import TransformCard
 
 _logger = logging.getLogger(__name__)
 
@@ -25,9 +24,12 @@ class TransformStep(BaseStep[U, TransformCard], Generic[U]):
         """
         return 'transform'
 
-    def _create_card(self) -> TransformCard:
-        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
-        return TransformCard(step_output_path = step_output_path)
+    @classmethod
+    def card_type(cls) -> Type[TransformCard]:
+        """
+        Returns the type of card to be created for the step.
+        """
+        return TransformCard
 
 
 

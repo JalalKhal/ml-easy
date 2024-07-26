@@ -1,5 +1,5 @@
 import logging
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Type
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
@@ -24,9 +24,12 @@ class EvaluateStep(BaseStep[U, EvaluateCard], Generic[U]):
         """
         return 'evaluate'
 
-    def _create_card(self) -> EvaluateCard:
-        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
-        return EvaluateCard(step_output_path = step_output_path)
+    @classmethod
+    def card_type(cls) -> Type[EvaluateCard]:
+        """
+        Returns the type of card to be created for the step.
+        """
+        return EvaluateCard
 
 
 

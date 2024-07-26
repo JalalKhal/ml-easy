@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Dict, Any
+from typing import List, Dict, Any
 
 from pydantic import BaseModel
 
@@ -8,7 +8,7 @@ from recipes.interfaces.config import BaseStepConfig
 
 class RecipePathsConfig(BaseModel):
     recipe_root_path: str
-    profile: Optional[str] = None
+    profile: str
 
 
 class BaseIngestConfig(BaseStepConfig):
@@ -37,14 +37,16 @@ class BaseTrainConfig(BaseStepConfig):
 
 class EvaluateCriteria(BaseStepConfig):
     metric: Score
-    threshold: Optional[float]
+    threshold: float
 
 
 class BaseEvaluateConfig(BaseStepConfig):
-    validation_criteria: List[EvaluateCriteria] = None
+    validation_criteria: List[EvaluateCriteria]
 
 
-class RegisterConfig(BaseStepConfig):
+class BaseRegisterConfig(BaseStepConfig):
+    register_fn: str
+    artifact_path: str
     allow_non_validated_model: bool
 
 

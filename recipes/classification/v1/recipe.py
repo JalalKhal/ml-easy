@@ -2,7 +2,7 @@ from typing import Type, Dict
 
 from recipes.classification.v1.config import ClassificationRecipeConfig
 from recipes.classification.v1.steps import ClassificationIngestStep, ClassificationTransformStep, \
-    ClassificationSplitStep, ClassificationTrainStep, ClassificationEvaluateStep
+    ClassificationSplitStep, ClassificationTrainStep, ClassificationEvaluateStep, ClassificationRegisterStep
 from recipes.interfaces.recipe import BaseRecipe
 from recipes.interfaces.step import BaseStep
 
@@ -13,7 +13,8 @@ class ClassificationRecipe(BaseRecipe[ClassificationRecipeConfig]):
         'transform' : ClassificationTransformStep,
         'split': ClassificationSplitStep,
         'train': ClassificationTrainStep,
-        'evaluate': ClassificationEvaluateStep
+        'evaluate': ClassificationEvaluateStep,
+        'register_': ClassificationRegisterStep
     }
 
     @property

@@ -2,14 +2,12 @@ import abc
 import logging
 from typing import List, Dict, Any, Generic, TypeVar, Type
 
-from recipes.enum import MLFlowErrorCode
-from recipes.exceptions import MlflowException
-from recipes.interfaces.config import Context, BaseStepConfig
+from recipes.interfaces.config import BaseStepConfig
 from recipes.interfaces.step import BaseStep
 from recipes.io.RecipeYAMLoader import YamlLoader, RecipeYAMLoader
 from recipes.steps.cards_config import StepMessage
 from recipes.steps.steps_config import RecipePathsConfig
-from recipes.utils import get_recipe_name, _get_or_create_execution_directory, load_class
+from recipes.utils import get_recipe_name, get_or_create_execution_directory, load_class
 
 _logger = logging.getLogger(__name__)
 
@@ -58,7 +56,7 @@ class BaseRecipe(abc.ABC, Generic[U]):
             None
         """
         message = StepMessage()
-        _get_or_create_execution_directory(self.steps)
+        get_or_create_execution_directory(self.steps)
         for step in self.steps:
             message = step.run(message)
         return message

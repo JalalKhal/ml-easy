@@ -26,9 +26,12 @@ class IngestStep(BaseStep[U, IngestCard], Generic[U]):
         """
         return 'ingest'
 
-    def _create_card(self) -> IngestCard:
-        step_output_path = get_step_output_path(self.context.recipe_root_path, self.name)
-        return IngestCard(step_output_path = step_output_path)
+    @classmethod
+    def card_type(cls) -> Type[IngestCard]:
+        """
+        Returns the type of card to be created for the step.
+        """
+        return IngestCard
 
 
 

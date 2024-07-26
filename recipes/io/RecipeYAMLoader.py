@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import json
 import logging
 import os
-from typing import Optional, TypeVar, Generic, Dict, Any, overload, TextIO, BinaryIO
+from typing import Optional, Dict, Any
 
 import yaml
 
@@ -45,9 +45,6 @@ class RecipeYAMLoader(YamlLoader):
         context_name = posixpath.join(self._RECIPE_PROFILE_DIR, f"{self._profile}.yaml")
         from jinja2 import FileSystemLoader, StrictUndefined
         from jinja2.sandbox import SandboxedEnvironment
-
-        template_path = os.path.join(self._recipe_root_path, template_name)
-        context_path = os.path.join(self._recipe_root_path, context_name)
 
         j2_env = SandboxedEnvironment(
             loader=FileSystemLoader(self._recipe_root_path, encoding=RecipeYAMLoader._ENCODING),

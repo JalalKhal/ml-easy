@@ -39,6 +39,8 @@ class TrainCard(BaseCard):
 class EvaluateCard(BaseCard):
     metrics_eval: Optional[List[Metric]] = None
 
+class RegisterCard(BaseCard):
+    artifact_path: Optional[str] = None
 
 class StepMessage(BaseModel):
     ingest: Optional[IngestCard] = None
@@ -46,3 +48,4 @@ class StepMessage(BaseModel):
     split: Optional[SplitCard] = None
     train: Optional[TrainCard] = None
     evaluate: Optional[EvaluateCard] = None
+    register_: Optional[RegisterCard] = None

@@ -3,14 +3,13 @@ import importlib
 import os
 from typing import Optional, Any, Type, Tuple
 
-from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME, EXT_PY
+from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME, EXT_PY, SCORES_PATH
 from recipes.enum import MLFlowErrorCode, ScoreType
 from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
 from recipes.exceptions import MlflowException
 from recipes.steps.evaluate.score import Score
 from recipes.steps.ingest.datasets import Dataset
 
-_SCORES_PATH = "recipes.steps.evaluate.score"
 
 
 def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
@@ -186,7 +185,7 @@ def get_step_component_output_path(step_path: str, component_name: str, extensio
                         hashlib.sha256(component_name.encode()).hexdigest() + extension)
 
 
-def _get_or_create_execution_directory(recipe_steps) -> str:
+def get_or_create_execution_directory(recipe_steps) -> str:
     """
     Obtains the path of the execution directory on the local filesystem corresponding to the
     specified recipe, creating the execution directory and its required contents if they do
@@ -220,7 +219,7 @@ def get_step_fn(conf: Any, suffix: str) -> str:
     )
 
 def get_score_class(score: ScoreType) -> Type[Score]:
-    return load_class(f'{_SCORES_PATH}.{score.name}')
+    return load_class(f'{SCORES_PATH}.{score.name}')
 
 def get_features_target(dataset: Dataset, target_col: str) -> Tuple[Dataset, Dataset]:
     X: Dataset = dataset.select([c for c in dataset.columns() if c != target_col])

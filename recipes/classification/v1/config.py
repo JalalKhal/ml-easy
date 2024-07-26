@@ -1,6 +1,6 @@
 from recipes.interfaces.config import BaseRecipeConfig, BaseStepsConfig
 from recipes.steps.steps_config import BaseIngestConfig, BaseTransformConfig, BaseSplitConfig, BaseTrainConfig, \
-    BaseEvaluateConfig
+    BaseEvaluateConfig, BaseRegisterConfig
 
 
 class ClassificationIngestConfig(BaseIngestConfig):
@@ -15,9 +15,12 @@ class ClassificationSplitConfig(BaseSplitConfig):
 class ClassificationTrainConfig(BaseTrainConfig):
     pass
 
-
 class ClassificationEvaluateConfig(BaseEvaluateConfig):
     pass
+
+class ClassificationRegisterConfig(BaseRegisterConfig):
+    pass
+
 
 class ClassificationStepsConfig(BaseStepsConfig):
     ingest: ClassificationIngestConfig
@@ -25,20 +28,11 @@ class ClassificationStepsConfig(BaseStepsConfig):
     split: ClassificationSplitConfig
     train: ClassificationTrainConfig
     evaluate: ClassificationEvaluateConfig
+    register_: ClassificationRegisterConfig
+
 
 
 class ClassificationRecipeConfig(BaseRecipeConfig):
     steps: ClassificationStepsConfig
 
 
-
-"""
-    split: SplitConfig
-    train: TrainConfig
-    evaluate: Optional[EvaluateConfig] = None
-    register_: RegisterConfig
-    # Optional fields
-    # ingest_scoring: Optional[str] = Field(alias='{{INGEST_SCORING_CONFIG}}')
-    # predict: Optional[dict] = None
-
-"""
