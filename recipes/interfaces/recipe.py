@@ -34,7 +34,6 @@ class BaseRecipe(abc.ABC, Generic[U]):
                 recipe.yaml to generate the configuration to run the recipe.
         """
         self._conf: U = conf
-        self._context: Context = Context(recipe_root_path=conf.recipe_root_path)
         self.steps: List[BaseStep] = self._resolve_recipe_steps()
 
     def _resolve_recipe_steps(self) -> List[BaseStep]:
