@@ -24,7 +24,11 @@
 
   steps:
     # Specifies the dataset to use for model development
-    ingest: {{INGEST_CONFIG}}
+    ingest:
+        ingest_fn: "ingest_fn"
+        location: "/home/khaldi/Documents/github_repos/refined_mlflow/recipes/test.csv"
+        sep: ","
+        encoding: "utf-8"
     split:
         split_fn: "split_fn"
         split_ratios: [ 0.75, 0.125, 0.125 ]

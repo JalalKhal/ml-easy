@@ -6,11 +6,6 @@ from recipes.enum import ScoreType
 from recipes.interfaces.config import BaseStepConfig
 
 
-class RecipePathsConfig(BaseModel):
-    recipe_root_path: str
-    profile: str
-
-
 class BaseIngestConfig(BaseStepConfig):
     ingest_fn: str
     location: str
