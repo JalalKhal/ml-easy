@@ -1,10 +1,13 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from pydantic import BaseModel
 
 from recipes.enum import ScoreType
 from recipes.interfaces.config import BaseStepConfig
 
+class RecipePathsConfig(BaseModel):
+    recipe_root_path: str
+    profile: Optional[str] = None
 
 class BaseIngestConfig(BaseStepConfig):
     ingest_fn: str
