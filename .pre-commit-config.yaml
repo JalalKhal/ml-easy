@@ -12,8 +12,6 @@ repos:
       hooks:
         -   id: trailing-whitespace
             exclude: '^tests/.*'
-        -   id: check-yaml
-            args: [resources/component/_config.yaml,.pre-commit-config.yaml]
         -   id: check-added-large-files
             args: ['--maxkb=1000']
         -   id: double-quote-string-fixer
@@ -26,4 +24,4 @@ repos:
       rev: v2.3.1
       hooks:
         - id: autoflake
-          args: ["--remove-all-unused-imports", "--in-place", "-r", "scraper"]
+          args: ["--remove-all-unused-imports", "--in-place", "-r", "recipes"]

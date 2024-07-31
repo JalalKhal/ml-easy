@@ -1,24 +1,33 @@
-from typing import Union
-
 from recipes.interfaces.config import BaseRecipeConfig, BaseStepsConfig
-from recipes.steps.steps_config import BaseIngestConfig, BaseTransformConfig, BaseSplitConfig, BaseTrainConfig, \
-    BaseEvaluateConfig, BaseRegisterConfig
+from recipes.steps.steps_config import (
+    BaseEvaluateConfig,
+    BaseIngestConfig,
+    BaseRegisterConfig,
+    BaseSplitConfig,
+    BaseTrainConfig,
+    BaseTransformConfig,
+)
 
 
 class ClassificationIngestConfig(BaseIngestConfig):
     pass
 
+
 class ClassificationTransformConfig(BaseTransformConfig):
     pass
+
 
 class ClassificationSplitConfig(BaseSplitConfig):
     pass
 
+
 class ClassificationTrainConfig(BaseTrainConfig):
     pass
 
+
 class ClassificationEvaluateConfig(BaseEvaluateConfig):
     pass
+
 
 class ClassificationRegisterConfig(BaseRegisterConfig):
     pass
@@ -31,7 +40,6 @@ class ClassificationStepsConfig(BaseStepsConfig):
     train: ClassificationTrainConfig
     evaluate: ClassificationEvaluateConfig
     register_: ClassificationRegisterConfig
-
 
 
 class ClassificationRecipeConfig(BaseRecipeConfig):

@@ -1,10 +1,15 @@
-import os
 from typing import Any, List
 
-from recipes.classification.v1.config import ClassificationIngestConfig, ClassificationTransformConfig, \
-    ClassificationSplitConfig, ClassificationTrainConfig, ClassificationEvaluateConfig, ClassificationRegisterConfig
+from recipes.classification.v1.config import (
+    ClassificationEvaluateConfig,
+    ClassificationIngestConfig,
+    ClassificationRegisterConfig,
+    ClassificationSplitConfig,
+    ClassificationTrainConfig,
+    ClassificationTransformConfig,
+)
 from recipes.interfaces.config import Context
-from recipes.steps.cards_config import StepMessage, Metric
+from recipes.steps.cards_config import Metric, StepMessage
 from recipes.steps.evaluate.evaluate import EvaluateStep
 from recipes.steps.ingest.datasets import Dataset
 from recipes.steps.ingest.ingest import IngestStep
@@ -16,7 +21,7 @@ from recipes.steps.train.models import Model
 from recipes.steps.train.train import TrainStep
 from recipes.steps.transform.transform import TransformStep
 from recipes.steps.transform.transformer import Transformer
-from recipes.utils import get_score_class, get_features_target
+from recipes.utils import get_features_target, get_score_class
 
 
 class ClassificationIngestStep(IngestStep[ClassificationIngestConfig]):
@@ -66,9 +71,9 @@ class ClassificationTrainStep(TrainStep[ClassificationTrainConfig]):
         model.fit(X_train, y_train)
         self.card.mod = model
         self.card.mod_outputs = model.get_model_outputs()
-        self.card.val_metric = model.score(X_val, y_val,
-                                           metric=get_score_class(self.conf.validation_metric.name),
-                                           **self.conf.validation_metric.params)
+        self.card.val_metric = model.score(
+            X_val, y_val, metric=get_score_class(self.conf.validation_metric.name), **self.conf.validation_metric.params
+        )
         return message
 
 
@@ -82,9 +87,9 @@ class ClassificationEvaluateStep(EvaluateStep[ClassificationEvaluateConfig]):
         model: Model = message.train.mod  # type: ignore
         metrics_eval: List[Metric] = []
         for criteria in self.conf.validation_criteria:
-            score: float = model.score(X_test, y_test,
-                                       metric=get_score_class(criteria.metric.name),
-                                       **criteria.metric.params)
+            score: float = model.score(
+                X_test, y_test, metric=get_score_class(criteria.metric.name), **criteria.metric.params
+            )
             metrics_eval.append(Metric(name=criteria.metric, value=score))
         self.card.metrics_eval = metrics_eval
         return message

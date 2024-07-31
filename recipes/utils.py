@@ -1,16 +1,19 @@
 import hashlib
 import importlib
 import os
-from importlib.machinery import ModuleSpec
-from typing import Any, Type, Tuple
-from importlib.util import module_from_spec
-from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME, EXT_PY, SCORES_PATH
+from typing import Any, Tuple, Type
+
+from recipes.constants import (
+    EXT_PY,
+    SCORES_PATH,
+    STEP_OUTPUTS_SUBDIRECTORY_NAME,
+    STEPS_SUBDIRECTORY_NAME,
+)
 from recipes.enum import MLFlowErrorCode, ScoreType
 from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
 from recipes.exceptions import MlflowException
 from recipes.steps.evaluate.score import Score
 from recipes.steps.ingest.datasets import Dataset
-
 
 
 def get_recipe_name(recipe_root_path: str) -> str:
@@ -35,7 +38,7 @@ def get_recipe_name(recipe_root_path: str) -> str:
 
 
 def _get_class_from_string(fully_qualified_class_name) -> Any:
-    module, class_name = fully_qualified_class_name.rsplit(".", maxsplit=1)
+    module, class_name = fully_qualified_class_name.rsplit('.', maxsplit=1)
     return getattr(importlib.import_module(module), class_name)
 
 
@@ -57,10 +60,7 @@ def load_class(fully_qualified_class_name: str) -> Any:
 
 
 def get_fully_qualified_module_name_for_step(recipe_root_path: str, step_dir: str, step_file_name: str):
-    fully_qualified_item: str = os.path.join(recipe_root_path,
-                                             step_dir,
-                                             step_file_name + EXT_PY
-                                             )
+    fully_qualified_item: str = os.path.join(recipe_root_path, step_dir, step_file_name + EXT_PY)
     return fully_qualified_item
 
 
@@ -74,8 +74,9 @@ def load_step_function(file_path: str, function_name: str) -> Any:
     module_name = os.path.splitext(os.path.basename(file_path))[0]
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
-        raise MlflowException(f"Could not load function {function_name} into a module",
-                              error_code=MLFlowErrorCode.INTERNAL_ERROR)
+        raise MlflowException(
+            f"Could not load function {function_name} into a module", error_code=MLFlowErrorCode.INTERNAL_ERROR
+        )
     else:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -105,7 +106,7 @@ def _get_execution_directory_basename(recipe_root_path) -> str:
     Returns:
         The basename of the execution directory corresponding to the specified recipe.
     """
-    return hashlib.sha256(os.path.abspath(recipe_root_path).encode("utf-8")).hexdigest()
+    return hashlib.sha256(os.path.abspath(recipe_root_path).encode('utf-8')).hexdigest()
 
 
 def get_or_create_base_execution_directory(recipe_root_path: str) -> str:
@@ -121,13 +122,11 @@ def get_or_create_base_execution_directory(recipe_root_path: str) -> str:
         The path of the execution directory on the local filesystem corresponding to the
         specified recipe.
     """
-    execution_directory_basename = _get_execution_directory_basename(
-        recipe_root_path=recipe_root_path
-    )
+    execution_directory_basename = _get_execution_directory_basename(recipe_root_path=recipe_root_path)
 
     execution_dir_path = os.path.abspath(
         MLFLOW_RECIPES_EXECUTION_DIRECTORY.get()
-        or os.path.join(os.path.expanduser("~"), ".mlflow", "recipes", execution_directory_basename)
+        or os.path.join(os.path.expanduser('~'), '.mlflow', 'recipes', execution_directory_basename)
     )
     os.makedirs(execution_dir_path, exist_ok=True)
     return execution_dir_path
@@ -185,9 +184,8 @@ def get_state_output_dir(step_path: str, state_file_name: str) -> str:
     return os.path.join(step_path, state_file_name)
 
 
-def get_step_component_output_path(step_path: str, component_name: str, extension=".csv") -> str:
-    return os.path.join(step_path,
-                        hashlib.sha256(component_name.encode()).hexdigest() + extension)
+def get_step_component_output_path(step_path: str, component_name: str, extension='.csv') -> str:
+    return os.path.join(step_path, hashlib.sha256(component_name.encode()).hexdigest() + extension)
 
 
 def get_or_create_execution_directory(recipe_steps) -> str:
@@ -203,7 +201,7 @@ def get_or_create_execution_directory(recipe_steps) -> str:
         recipe.
     """
     if len(recipe_steps) == 0:
-        raise ValueError("No steps provided")
+        raise ValueError('No steps provided')
     else:
         recipe_root_path = recipe_steps[0].context.recipe_root_path
         execution_dir_path = get_or_create_base_execution_directory(recipe_root_path)
@@ -214,7 +212,7 @@ def get_or_create_execution_directory(recipe_steps) -> str:
 
 
 def get_step_fn(conf: Any, suffix: str) -> str:
-    for (attr, value) in vars(conf).items():
+    for attr, value in vars(conf).items():
         if isinstance(value, str) and value.endswith(suffix):
             return value
 
@@ -223,8 +221,10 @@ def get_step_fn(conf: Any, suffix: str) -> str:
         error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
     )
 
+
 def get_score_class(score: ScoreType) -> Type[Score]:
     return load_class(f'{SCORES_PATH}.{score.name}')
+
 
 def get_features_target(dataset: Dataset, target_col: str) -> Tuple[Dataset, Dataset]:
     X: Dataset = dataset.select([c for c in dataset.columns() if c != target_col])

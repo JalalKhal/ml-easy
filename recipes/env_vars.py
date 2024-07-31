@@ -1,5 +1,5 @@
 import os
-from typing import Type, Any
+from typing import Any
 
 
 class _EnvironmentVariable:
@@ -46,8 +46,7 @@ class _EnvironmentVariable:
     def __format__(self, format_spec: str) -> str:
         return self.name.__format__(format_spec)
 
+
 #: Specifies the execution directory for recipes.
 #: (default: ``None``)
-MLFLOW_RECIPES_EXECUTION_DIRECTORY = _EnvironmentVariable(
-    "MLFLOW_RECIPES_EXECUTION_DIRECTORY", str, None
-)
+MLFLOW_RECIPES_EXECUTION_DIRECTORY = _EnvironmentVariable('MLFLOW_RECIPES_EXECUTION_DIRECTORY', str, None)

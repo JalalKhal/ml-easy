@@ -1,13 +1,13 @@
-import posixpath
-from abc import ABC, abstractmethod
 import json
 import logging
 import os
-from typing import Optional, TypeVar, Generic, Dict, Any, overload, TextIO, BinaryIO
+import posixpath
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 
 import yaml
 
-from recipes.constants import RECIPE_CONFIG_FILE_NAME, ENCODING, RECIPE_PROFILE_DIR
+from recipes.constants import ENCODING, RECIPE_CONFIG_FILE_NAME, RECIPE_PROFILE_DIR
 
 _logger = logging.getLogger(__name__)
 
@@ -24,9 +24,7 @@ class YamlLoader(ABC):
 
 class RecipeYAMLoader(YamlLoader):
 
-
-    def __init__(self,
-                 recipe_root_path: str, profile: Optional[str] = None):
+    def __init__(self, recipe_root_path: str, profile: Optional[str] = None):
         self._recipe_root_path = recipe_root_path
         self._profile = profile
 
@@ -52,14 +50,14 @@ class RecipeYAMLoader(YamlLoader):
         j2_env = SandboxedEnvironment(
             loader=FileSystemLoader(self._recipe_root_path, encoding=ENCODING),
             undefined=StrictUndefined,
-            line_comment_prefix="#",
+            line_comment_prefix='#',
         )
 
         def from_json(input_var):
             with open(input_var, encoding=ENCODING) as f:
                 return json.load(f)
 
-        j2_env.filters["from_json"] = from_json
+        j2_env.filters['from_json'] = from_json
         # Compute final source of context file (e.g. my-profile.yml), applying Jinja filters
         # like from_json as needed to load context information from files, then load into a dict
         context = j2_env.get_template(context_name).render({})
@@ -75,7 +73,7 @@ class RecipeYAMLoader(YamlLoader):
                 return self.render_and_merge_yaml()
             else:
                 recipe_file_name = os.path.join(self._recipe_root_path, RECIPE_CONFIG_FILE_NAME)
-                return open(recipe_file_name, "r").read()
+                return open(recipe_file_name, 'r').read()
         except Exception as e:
-            _logger.error("Failed to get recipe config", exc_info=e)
+            _logger.error('Failed to get recipe config', exc_info=e)
             raise

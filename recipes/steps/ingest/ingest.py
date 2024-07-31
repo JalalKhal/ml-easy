@@ -1,6 +1,5 @@
-import importlib
 import logging
-from typing import Type, TypeVar, Generic, Optional
+from typing import Generic, Optional, Type, TypeVar
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
@@ -10,7 +9,8 @@ from recipes.steps.steps_config import BaseIngestConfig
 _logger = logging.getLogger(__name__)
 
 
-U = TypeVar("U", bound="BaseIngestConfig")
+U = TypeVar('U', bound='BaseIngestConfig')
+
 
 class IngestStep(BaseStep[U, IngestCard], Generic[U]):
 
@@ -35,7 +35,3 @@ class IngestStep(BaseStep[U, IngestCard], Generic[U]):
     @property
     def previous_step_name(self) -> Optional[str]:
         return None
-
-
-
-

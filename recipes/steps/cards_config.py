@@ -1,8 +1,7 @@
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
-from recipes.enum import ScoreType
 from recipes.interfaces.config import BaseCard
 from recipes.steps.ingest.datasets import Dataset
 from recipes.steps.steps_config import Score
@@ -39,8 +38,10 @@ class TrainCard(BaseCard):
 class EvaluateCard(BaseCard):
     metrics_eval: Optional[List[Metric]] = None
 
+
 class RegisterCard(BaseCard):
     artifact_path: Optional[str] = None
+
 
 class StepMessage(BaseModel):
     ingest: Optional[IngestCard] = None
