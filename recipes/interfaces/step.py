@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, TypeVar, Generic, Type
 
 from recipes.enum import StepExecutionStateKeys, StepStatus, MLFlowErrorCode
 from recipes.exceptions import MlflowException
-from recipes.interfaces.config import Context
+from recipes.interfaces.config import Context, BaseStepConfig, BaseCard
 from recipes.steps.cards_config import StepMessage
 from recipes.utils import get_fully_qualified_module_name_for_step, load_step_function, get_step_fn, \
     get_step_output_path
@@ -25,7 +25,7 @@ class StepExecutionState:
     the time of the last status update.
     """
 
-    def __init__(self, status: StepStatus, last_updated_timestamp: int, stack_trace: str):
+    def __init__(self, status: StepStatus, last_updated_timestamp: float, stack_trace: Optional[str]):
         """
         Args:
             status: The execution status of the step.
@@ -38,7 +38,7 @@ class StepExecutionState:
         self.last_updated_timestamp = last_updated_timestamp
         self.stack_trace = stack_trace
 
-    def to_dict(self) -> Dict[StepExecutionStateKeys, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Creates a dictionary representation of the step execution state.
         """
@@ -102,6 +102,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         _logger.info(f"Running step {self.name}...")
         try:
             self._update_status(status=StepStatus.RUNNING, output_directory=self.card.step_output_path)
+            self.validate_previous_step(message)
             message = self._run(message)
             self.update_message(message)
             self._update_status(status=StepStatus.SUCCEEDED, output_directory=self.card.step_output_path)
@@ -154,4 +155,13 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     def update_message(self, message: StepMessage) -> None:
         setattr(message, self.name, self.card)
 
+    @property
+    @abc.abstractmethod
+    def previous_step_name(self) -> Optional[str]:
+        pass
 
+    def validate_previous_step(self, message: StepMessage) -> None:
+        if self.previous_step_name is not None:
+            if getattr(message, self.previous_step_name) is None:
+                raise MlflowException(f"Previous step {self.previous_step_name} does not exist for step {self.name}.",
+                                      error_code=MLFlowErrorCode.INTERNAL_ERROR)

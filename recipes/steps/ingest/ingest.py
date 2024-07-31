@@ -1,12 +1,11 @@
 import importlib
 import logging
-from typing import Type, TypeVar, Generic
+from typing import Type, TypeVar, Generic, Optional
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
-from recipes.steps.cards_config import IngestCard, StepMessage
-from recipes.steps.ingest.datasets import Dataset
-from recipes.utils import get_step_output_path, get_step_component_output_path
+from recipes.steps.cards_config import IngestCard
+from recipes.steps.steps_config import BaseIngestConfig
 
 _logger = logging.getLogger(__name__)
 
@@ -32,6 +31,10 @@ class IngestStep(BaseStep[U, IngestCard], Generic[U]):
         Returns the type of card to be created for the step.
         """
         return IngestCard
+
+    @property
+    def previous_step_name(self) -> Optional[str]:
+        return None
 
 
 

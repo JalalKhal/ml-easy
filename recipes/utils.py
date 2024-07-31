@@ -1,8 +1,9 @@
 import hashlib
 import importlib
 import os
-from typing import Optional, Any, Type, Tuple
-
+from importlib.machinery import ModuleSpec
+from typing import Any, Type, Tuple
+from importlib.util import module_from_spec
 from recipes.constants import STEPS_SUBDIRECTORY_NAME, STEP_OUTPUTS_SUBDIRECTORY_NAME, EXT_PY, SCORES_PATH
 from recipes.enum import MLFlowErrorCode, ScoreType
 from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
@@ -12,7 +13,7 @@ from recipes.steps.ingest.datasets import Dataset
 
 
 
-def get_recipe_name(recipe_root_path: Optional[str] = None) -> str:
+def get_recipe_name(recipe_root_path: str) -> str:
     """
     Obtains the name of the specified recipe or of the recipe corresponding to the current
     working directory.
@@ -72,8 +73,12 @@ def load_step_function(file_path: str, function_name: str) -> Any:
 
     module_name = os.path.splitext(os.path.basename(file_path))[0]
     spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    if spec is None or spec.loader is None:
+        raise MlflowException(f"Could not load function {function_name} into a module",
+                              error_code=MLFlowErrorCode.INTERNAL_ERROR)
+    else:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
 
     try:
         return getattr(module, function_name)

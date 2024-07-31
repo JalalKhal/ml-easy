@@ -1,9 +1,10 @@
 import logging
-from typing import TypeVar, Generic, Type
+from typing import TypeVar, Generic, Type, Optional
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
 from recipes.steps.cards_config import SplitCard, RegisterCard
+from recipes.steps.steps_config import BaseRegisterConfig
 
 _logger = logging.getLogger(__name__)
 
@@ -29,3 +30,7 @@ class RegisterStep(BaseStep[U, RegisterCard], Generic[U]):
         Returns the type of card to be created for the step.
         """
         return RegisterCard
+
+    @property
+    def previous_step_name(self) -> Optional[str]:
+        return 'evaluate'

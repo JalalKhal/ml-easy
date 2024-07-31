@@ -1,3 +1,5 @@
+from typing import Union
+
 from recipes.interfaces.config import BaseRecipeConfig, BaseStepsConfig
 from recipes.steps.steps_config import BaseIngestConfig, BaseTransformConfig, BaseSplitConfig, BaseTrainConfig, \
     BaseEvaluateConfig, BaseRegisterConfig
@@ -33,6 +35,4 @@ class ClassificationStepsConfig(BaseStepsConfig):
 
 
 class ClassificationRecipeConfig(BaseRecipeConfig):
-    steps: ClassificationStepsConfig
-
-
+    pass

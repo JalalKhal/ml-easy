@@ -23,11 +23,11 @@ class Dataset(ABC, Generic[V]):
     def __init__(self, service: V):
         self.service = service
 
-    def __iter__(self) -> Iterable:
-        return self.collect().service.__iter__()
 
-    def collect(self) -> Self:
-        return self
+    @abstractmethod
+    def __iter__(self) -> Iterable:
+        pass
+
 
     @abstractmethod
     def to_pandas(self) -> pd.DataFrame:
@@ -63,7 +63,7 @@ class Dataset(ABC, Generic[V]):
     @classmethod
     @abstractmethod
     def from_numpy(
-            self,
+            cls,
             data: np.ndarray[Any, Any],
     ) -> Self:
         pass
@@ -74,6 +74,10 @@ class Dataset(ABC, Generic[V]):
 
     @abstractmethod
     def columns(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def collect(self) -> Self:
         pass
 
 
@@ -90,8 +94,12 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
 
     def get_dataframe(self) -> pl.DataFrame:
         df = self.service.collect() if isinstance(self.service, pl.LazyFrame) else self.service
-        self.service = df.lazy()
         return df
+
+    def __iter__(self) -> Iterable:
+        ds: pl.DataFrame = self.get_dataframe()
+        return ds.__iter__()
+
 
     @classmethod
     def read_csv(
@@ -117,13 +125,10 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
             file: str,
             separator: str = ',',
     ) -> None:
-        self.service.collect().write_csv(file, separator=separator)
-
-    def collect(self) -> Self:
-        return PolarsDataset(self.service.collect())
+        self.get_dataframe().write_csv(file, separator=separator)
 
     def split(self, train_prop: float, val_prop: float) -> Tuple[Self, Self, Self]:
-        total_samples = self.service.select(pl.len()).collect().item()
+        total_samples = self.get_dataframe().select(pl.len()).item()
         train_size = int(train_prop * total_samples)
         val_size = int(val_prop * total_samples)
         test_size = total_samples - train_size - val_size
@@ -136,16 +141,19 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
 
     def to_numpy(self) -> np.ndarray[Any, Any]:
         return self.get_dataframe().to_numpy()
-
+    @classmethod
     def from_numpy(
-            self,
+            cls,
             data: np.ndarray[Any, Any],
     ) -> Self:
-        return self.__class__(pl.from_numpy(data))
+        return cls(pl.from_numpy(data))
 
     def select(self, cols: List[str]) -> Self:
         return self.__class__(service=self.get_dataframe().select(cols))
 
     def columns(self) -> List[str]:
         return self.service.columns
+
+    def collect(self) -> Self:
+        return self.__class__(self.get_dataframe())
 

@@ -4,12 +4,12 @@ from typing import List, Dict, Any, Generic, TypeVar, Type
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
-from recipes.interfaces.config import BaseStepConfig, Context
+from recipes.interfaces.config import BaseStepConfig, BaseRecipeConfig
 from recipes.interfaces.step import BaseStep
 from recipes.io.RecipeYAMLoader import YamlLoader, RecipeYAMLoader
 from recipes.steps.cards_config import StepMessage
 from recipes.steps.steps_config import RecipePathsConfig
-from recipes.utils import get_recipe_name, get_or_create_execution_directory, load_class, _get_class_from_string
+from recipes.utils import get_recipe_name, get_or_create_execution_directory, _get_class_from_string
 
 _logger = logging.getLogger(__name__)
 
@@ -76,32 +76,13 @@ class Recipe:
 
     """
 
-    def __new__(cls, recipe_paths_config: RecipePathsConfig) -> Any:
+    @classmethod
+    def create_recipe(cls, recipe_paths_config: RecipePathsConfig) -> BaseRecipe:
         """
         Creates an instance of an MLflow Recipe for a particular ML problem or MLOps task based
         on the current working directory and supplied configuration. The current working directory
         must be the root directory of an MLflow Recipe repository or a subdirectory of an
         MLflow Recipe repository.
-
-        Args:
-            profile: The name of the profile to use for configuring the problem-specific or
-                task-specific recipe. Profiles customize the configuration of
-                one or more recipe steps, and recipe executions with different profiles
-                often produce different results.
-
-        Returns:
-            A recipe for a particular ML problem or MLOps task. For example, an instance of
-            `RegressionRecipe <https://github.com/mlflow/recipes-regression-template>`_
-            for regression problems.
-
-        .. code-block:: python
-
-            import os
-            from mlflow.recipes import Recipe
-
-            os.chdir("~/recipes-regression-template")
-            regression_recipe = Recipe(profile="local")
-            regression_recipe.run(step="train")
         """
 
         config = cls.read_config(recipe_paths_config)

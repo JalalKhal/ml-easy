@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 from recipes.steps.ingest.datasets import Dataset
 
-from sklearn.metrics import (
+from sklearn.metrics import ( # type: ignore
     accuracy_score, f1_score,
     roc_auc_score, mean_absolute_error,
     mean_squared_error, r2_score

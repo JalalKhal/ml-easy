@@ -1,6 +1,8 @@
+from typing import Union
 
 from pydantic import BaseModel
 
+from recipes.classification.v1.config import ClassificationRecipeConfig
 
 
 class BaseStepConfig(BaseModel):
@@ -15,6 +17,7 @@ class Context(BaseModel):
     target_col: str
 
 class BaseRecipeConfig(BaseModel):
+    steps: Union["ClassificationRecipeConfig"]
     recipe: str
     context: Context
 

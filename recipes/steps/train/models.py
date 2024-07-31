@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, Protocol, Self, Dict, Any, Type
 
 import numpy as np
-from sklearn.base import is_classifier
+from sklearn.base import is_classifier # type: ignore
 
 from recipes.steps.evaluate.score import Score
 from recipes.steps.ingest.datasets import Dataset

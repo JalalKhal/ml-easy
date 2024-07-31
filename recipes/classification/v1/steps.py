@@ -31,13 +31,13 @@ class ClassificationIngestStep(IngestStep[ClassificationIngestConfig]):
 
 
 class ClassificationTransformStep(TransformStep[ClassificationTransformConfig]):
-    def __init__(self, transform_config: ClassificationIngestConfig, context: Context):
+    def __init__(self, transform_config: ClassificationTransformConfig, context: Context):
         super().__init__(transform_config, context)
 
     def _run(self, message: StepMessage) -> StepMessage:
         transformer: Any = self.get_step_result()
         self.validate_step_result(transformer, Transformer)
-        self.card.tf_dataset = transformer.fit_transform(message.ingest.dataset)
+        self.card.tf_dataset = transformer.fit_transform(message.ingest.dataset)  # type: ignore
         return message
 
 
@@ -48,7 +48,7 @@ class ClassificationSplitStep(SplitStep[ClassificationSplitConfig]):
     def _run(self, message: StepMessage) -> StepMessage:
         dataset_splitter: Any = self.get_step_result()
         self.validate_step_result(dataset_splitter, DatasetSplitter)
-        self.card.train_val_test = dataset_splitter.split(message.transform.tf_dataset)
+        self.card.train_val_test = dataset_splitter.split(message.transform.tf_dataset)  # type: ignore
         return message
 
 
@@ -59,8 +59,8 @@ class ClassificationTrainStep(TrainStep[ClassificationTrainConfig]):
     def _run(self, message: StepMessage) -> StepMessage:
         model: Any = self.get_step_result()
         self.validate_step_result(model, Model)
-        train: Dataset = message.split.train_val_test[0].collect()
-        val: Dataset = message.split.train_val_test[1].collect()
+        train: Dataset = message.split.train_val_test[0].collect()  # type: ignore
+        val: Dataset = message.split.train_val_test[1].collect()  # type: ignore
         X_train, y_train = get_features_target(train, self.context.target_col)
         X_val, y_val = get_features_target(val, self.context.target_col)
         model.fit(X_train, y_train)
@@ -77,9 +77,9 @@ class ClassificationEvaluateStep(EvaluateStep[ClassificationEvaluateConfig]):
         super().__init__(evaluate_config, context)
 
     def _run(self, message: StepMessage) -> StepMessage:
-        test: Dataset = message.split.train_val_test[0].collect()
+        test: Dataset = message.split.train_val_test[0].collect()  # type: ignore
         X_test, y_test = get_features_target(test, self.context.target_col)
-        model: Model = message.train.mod
+        model: Model = message.train.mod  # type: ignore
         metrics_eval: List[Metric] = []
         for criteria in self.conf.validation_criteria:
             score: float = model.score(X_test, y_test,
@@ -98,6 +98,6 @@ class ClassificationRegisterStep(RegisterStep[ClassificationRegisterConfig]):
         registry: Any = self.get_step_result()
         self.validate_step_result(registry, ModelRegistry)
         artifact_path: str = f"{self.card.step_output_path}{self.conf.artifact_path}"
-        registry.log_model(message.train.mod, artifact_path)
+        registry.log_model(message.train.mod, artifact_path)  # type: ignore
         self.card.artifact_path = artifact_path
         return message

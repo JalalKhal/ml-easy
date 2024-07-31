@@ -1,16 +1,18 @@
 import abc
 import logging
-from typing import TypeVar, Generic, Type
+from typing import TypeVar, Generic, Type, Optional
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
 from recipes.steps.cards_config import StepMessage, TransformCard, TrainCard
+from recipes.steps.steps_config import BaseTrainConfig
 from recipes.utils import get_step_output_path
 
 _logger = logging.getLogger(__name__)
 
 
 U = TypeVar("U", bound="BaseTrainConfig")
+
 
 class TrainStep(BaseStep[U, TrainCard], Generic[U]):
 
@@ -32,6 +34,10 @@ class TrainStep(BaseStep[U, TrainCard], Generic[U]):
         Returns the type of card to be created for the step.
         """
         return TrainCard
+
+    @property
+    def previous_step_name(self) -> Optional[str]:
+        return 'split'
 
 
 

@@ -1,15 +1,18 @@
 import abc
 import logging
-from typing import TypeVar, Generic, Type
+from typing import TypeVar, Generic, Type, Optional
 
+from recipes.exceptions import MlflowException
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
-from recipes.steps.cards_config import TransformCard
+from recipes.steps.cards_config import TransformCard, StepMessage
+from recipes.steps.steps_config import BaseTransformConfig
 
 _logger = logging.getLogger(__name__)
 
 
 U = TypeVar("U", bound="BaseTransformConfig")
+
 
 class TransformStep(BaseStep[U, TransformCard], Generic[U]):
 
@@ -30,6 +33,13 @@ class TransformStep(BaseStep[U, TransformCard], Generic[U]):
         Returns the type of card to be created for the step.
         """
         return TransformCard
+
+    @property
+    def previous_step_name(self) -> Optional[str]:
+        return 'ingest'
+
+
+
 
 
 

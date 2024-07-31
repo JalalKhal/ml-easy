@@ -8,7 +8,7 @@ from recipes.interfaces.step import BaseStep
 
 
 class ClassificationRecipe(BaseRecipe[ClassificationRecipeConfig]):
-    _RECIPE_STEPS = {
+    _RECIPE_STEPS: Dict[str, Type[BaseStep]] = {
         'ingest' : ClassificationIngestStep,
         'transform' : ClassificationTransformStep,
         'split': ClassificationSplitStep,
