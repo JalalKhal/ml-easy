@@ -1,0 +1,29 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+    - repo: https://github.com/ambv/black
+      rev: 24.4.0
+      hooks:
+          - id: black
+            language_version: python3.11
+            args: [--config=python-fmt-conf/pyproject.toml]
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v3.2.0
+      hooks:
+        -   id: trailing-whitespace
+            exclude: '^tests/.*'
+        -   id: check-yaml
+            args: [resources/component/_config.yaml,.pre-commit-config.yaml]
+        -   id: check-added-large-files
+            args: ['--maxkb=1000']
+        -   id: double-quote-string-fixer
+    - repo: https://github.com/pycqa/isort
+      rev: 5.13.2
+      hooks:
+        - id: isort
+          args: ["--profile", "black", "filter-files"]
+    - repo: https://github.com/PyCQA/autoflake
+      rev: v2.3.1
+      hooks:
+        - id: autoflake
+          args: ["--remove-all-unused-imports", "--in-place", "-r", "scraper"]
