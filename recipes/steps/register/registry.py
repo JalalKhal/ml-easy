@@ -42,7 +42,7 @@ class MlflowRegistry(Registry):
                 train, validation, test = message.split.train_val_test  # type:ignore
                 X_test, y_test = get_features_target(test, self.context.target_col)  # type:ignore
                 signature = infer_signature(
-                    X_test.to_numpy(), message.train.mod.predict(X_test).to_numpy().reshape(-1)
+                    X_test.to_numpy(), message.train.mod.predict(X_test).to_numpy().reshape(-1)  # type: ignore
                 )  # type:ignore
                 mlflow.sklearn.log_model(
                     message.train.mod._service,  # type:ignore
