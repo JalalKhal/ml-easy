@@ -17,8 +17,9 @@
   recipe: "classification/v1"
 
   context:
-    recipe_root_path : "/home/khaldi/Documents/github_repos/refined_mlflow/recipe_template"
-    target_col: "category"
+    recipe_root_path : "/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff"
+    target_col: {{TARGET_COL}}
+    experiment: {{EXPERIMENT}}
 
   # FIXME::REQUIRED: Specifies the target column name for model training and evaluation.
 
@@ -26,14 +27,40 @@
     # Specifies the dataset to use for model development
     ingest:
         ingest_fn: "ingest_fn"
-        location: "/home/khaldi/Documents/github_repos/refined_mlflow/recipes/test.csv"
+        location: "/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv"
         sep: ","
-        encoding: "utf-8"
+        encoding: "ISO-8859-1"
+        filters:
+            #fail_/_nff:
+                #type: "EqualFilter"
+                #values: "Y"
+
+
+
+
     split:
         split_fn: "split_fn"
         split_ratios: [ 0.75, 0.125, 0.125 ]
-    transform:        #
+
+
+    transform:
         transformer_fn: "transformer_fn"
+        cols:
+            cm_motif_dep:
+                path : "sklearn.feature_extraction.text.TfidfVectorizer"
+                params:
+                    max_features : 5000
+                    ngram_range : (1,3)
+            cm_action_correc:
+                path: "sklearn.feature_extraction.text.TfidfVectorizer"
+                params:
+                    max_features: 5000
+                    ngram_range: (1,3)
+            cm_info_interne:
+                path: "sklearn.feature_extraction.text.TfidfVectorizer"
+                params:
+                    max_features: 5000
+                    ngram_range: (1,3)
 
     train:
         estimator_fn: "estimator_fn"
@@ -51,7 +78,8 @@
               threshold: .5
     register_:
         register_fn: "register_fn"
-        artifact_path: "/model.pkl"
-        allow_non_validated_model: false
+        artifact_path: "sklearn-model"
+        registered_model_name: "registered_model_name"
+
 
 

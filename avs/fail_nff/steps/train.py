@@ -16,6 +16,6 @@ def estimator_fn(conf: ClassificationTrainConfig, context: Context) -> Model:
     The estimator's input and output signatures should be compatible with scikit-learn
     estimators.
     """
-    path = "sklearn.linear_model.LogisticRegression"
-    estimator: ScikitModel = ScikitModel.load_from_library(path, {"max_iter" : 3000})
+    path = 'sklearn.linear_model.LogisticRegression'
+    estimator: ScikitModel = ScikitModel.load_from_library(path, {'max_iter': 3000})
     return estimator

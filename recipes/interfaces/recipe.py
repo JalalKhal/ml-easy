@@ -1,20 +1,24 @@
 import abc
 import logging
-from typing import List, Dict, Any, Generic, TypeVar, Type
+from typing import Any, Dict, Generic, List, Type, TypeVar
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
-from recipes.interfaces.config import BaseStepConfig, BaseRecipeConfig
+from recipes.interfaces.config import BaseRecipeConfig, BaseStepConfig
 from recipes.interfaces.step import BaseStep
-from recipes.io.RecipeYAMLoader import YamlLoader, RecipeYAMLoader
+from recipes.io.RecipeYAMLoader import RecipeYAMLoader, YamlLoader
 from recipes.steps.cards_config import StepMessage
 from recipes.steps.steps_config import RecipePathsConfig
-from recipes.utils import get_recipe_name, get_or_create_execution_directory, _get_class_from_string
+from recipes.utils import (
+    get_class_from_string,
+    get_or_create_execution_directory,
+    get_recipe_name,
+)
 
 _logger = logging.getLogger(__name__)
 
 
-U = TypeVar('U', bound="BaseRecipeConfig")
+U = TypeVar('U', bound='BaseRecipeConfig')
 
 
 class BaseRecipe(abc.ABC, Generic[U]):
@@ -38,7 +42,7 @@ class BaseRecipe(abc.ABC, Generic[U]):
 
     def _resolve_recipe_steps(self) -> List[BaseStep]:
         steps: List[BaseStep] = []
-        for step_name in self._conf.steps.__fields__.keys():
+        for step_name in self._conf.steps.model_fields.keys():
             step_class: Type[BaseStep] = self.recipe_steps[step_name]
             step_config: BaseStepConfig = getattr(self._conf.steps, step_name)
             steps.append(step_class(step_config, self._conf.context))
@@ -48,7 +52,6 @@ class BaseRecipe(abc.ABC, Generic[U]):
     @abc.abstractmethod
     def recipe_steps(self) -> Dict[str, Type[BaseStep]]:
         pass
-
 
     def run(self) -> StepMessage:
         """
@@ -64,7 +67,7 @@ class BaseRecipe(abc.ABC, Generic[U]):
         return message
 
 
-class Recipe:
+class RecipeFactory:
     """
     A factory class that creates an instance of a recipe for a particular ML problem
     (e.g. regression, classification) or MLOps task (e.g. batch scoring) based on the current
@@ -87,18 +90,17 @@ class Recipe:
 
         config = cls.read_config(recipe_paths_config)
         recipe = config.recipe
-        recipe_path = recipe.replace("/", ".").replace("@", ".")
+        recipe_path = recipe.replace('/', '.').replace('@', '.')
         class_name = f"recipes.{recipe_path}.RecipeImpl"
         recipe_class_module = cls.load_class(class_name)
         recipe_name = get_recipe_name(recipe_paths_config.recipe_root_path)
         _logger.info(f"Creating MLflow Recipe '{recipe_name}' with profile: '{recipe_paths_config.profile}'")
         return recipe_class_module(config)
 
-
     @classmethod
     def load_class(cls, class_name: str) -> Any:
         try:
-            class_module = _get_class_from_string(class_name)
+            class_module = get_class_from_string(class_name)
         except Exception as e:
             if isinstance(e, ModuleNotFoundError):
                 raise MlflowException(
@@ -114,11 +116,10 @@ class Recipe:
 
     @classmethod
     def read_config(cls, recipe_paths_config: RecipePathsConfig) -> Any:
-        reader: YamlLoader = RecipeYAMLoader(recipe_paths_config.recipe_root_path,
-                                             recipe_paths_config.profile)
+        reader: YamlLoader = RecipeYAMLoader(recipe_paths_config.recipe_root_path, recipe_paths_config.profile)
         config: Dict[str, Any] = reader.as_dict()
-        recipe: str = config["recipe"]
-        recipe_path: str = recipe.replace("/", ".").replace("@", ".")
+        recipe: str = config['recipe']
+        recipe_path: str = recipe.replace('/', '.').replace('@', '.')
         conf_class_name: str = f"recipes.{recipe_path}.ConfigImpl"
         conf_class_module = cls.load_class(conf_class_name)
         return conf_class_module.model_validate(config)

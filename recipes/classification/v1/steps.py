@@ -1,3 +1,4 @@
+import pickle
 from typing import Any, List
 
 from recipes.classification.v1.config import (
@@ -13,14 +14,13 @@ from recipes.steps.cards_config import Metric, StepMessage
 from recipes.steps.evaluate.evaluate import EvaluateStep
 from recipes.steps.ingest.datasets import Dataset
 from recipes.steps.ingest.ingest import IngestStep
-from recipes.steps.register.ModelRegistry import ModelRegistry
 from recipes.steps.register.register_ import RegisterStep
+from recipes.steps.register.registry import Registry
 from recipes.steps.split.split import SplitStep
 from recipes.steps.split.splitter import DatasetSplitter
 from recipes.steps.train.models import Model
 from recipes.steps.train.train import TrainStep
 from recipes.steps.transform.transform import TransformStep
-from recipes.steps.transform.transformer import Transformer
 from recipes.utils import get_features_target, get_score_class
 
 
@@ -40,9 +40,17 @@ class ClassificationTransformStep(TransformStep[ClassificationTransformConfig]):
         super().__init__(transform_config, context)
 
     def _run(self, message: StepMessage) -> StepMessage:
+        from recipes.steps.transform.transformer import Transformer
+
         transformer: Any = self.get_step_result()
         self.validate_step_result(transformer, Transformer)
-        self.card.tf_dataset = transformer.fit_transform(message.ingest.dataset)  # type: ignore
+        self.card.transformer_path = f"{self.card.step_output_path}/transformer.pkl"
+
+        X, y = get_features_target(message.ingest.dataset, self.context.target_col)
+        self.card.tf_dataset = transformer.fit_transform(X, y)
+        with open(self.card.transformer_path, 'wb') as f:
+            pickle.dump(transformer, f)
+        self.card.config = self.conf
         return message
 
 
@@ -101,8 +109,6 @@ class ClassificationRegisterStep(RegisterStep[ClassificationRegisterConfig]):
 
     def _run(self, message: StepMessage) -> StepMessage:
         registry: Any = self.get_step_result()
-        self.validate_step_result(registry, ModelRegistry)
-        artifact_path: str = f"{self.card.step_output_path}{self.conf.artifact_path}"
-        registry.log_model(message.train.mod, artifact_path)  # type: ignore
-        self.card.artifact_path = artifact_path
+        self.validate_step_result(registry, Registry)
+        registry.log_model(message)  # type: ignore
         return message

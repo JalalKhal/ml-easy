@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 from recipes.interfaces.config import BaseCard
 from recipes.steps.ingest.datasets import Dataset
-from recipes.steps.steps_config import Score
+from recipes.steps.steps_config import BaseTransformConfig, Score
 from recipes.steps.train.models import Model
 
 
@@ -15,6 +15,8 @@ class IngestCard(BaseCard):
 
 class TransformCard(BaseCard):
     tf_dataset: Optional[Dataset] = None
+    config: Optional[BaseTransformConfig] = None
+    transformer_path: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
@@ -40,7 +42,7 @@ class EvaluateCard(BaseCard):
 
 
 class RegisterCard(BaseCard):
-    artifact_path: Optional[str] = None
+    pass
 
 
 class StepMessage(BaseModel):

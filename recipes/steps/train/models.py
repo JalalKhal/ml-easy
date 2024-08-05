@@ -1,9 +1,9 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Protocol, Self, Dict, Any, Type
+from typing import Any, Dict, Generic, Protocol, Self, Type, TypeVar
 
 import numpy as np
-from sklearn.base import is_classifier # type: ignore
+from sklearn.base import is_classifier  # type: ignore
 
 from recipes.steps.evaluate.score import Score
 from recipes.steps.ingest.datasets import Dataset
@@ -28,12 +28,7 @@ class Model(ABC, Generic[U]):
         return self.predict(X)
 
     @abstractmethod
-    def score(self,
-              X: Dataset,
-              y: Dataset,
-              metric: Type[Score],
-              **kwargs
-              ) -> float:
+    def score(self, X: Dataset, y: Dataset, metric: Type[Score], **kwargs) -> float:
         pass
 
     @abstractmethod
@@ -41,20 +36,15 @@ class Model(ABC, Generic[U]):
         pass
 
 
-
-
 class EstimatorProtocol(Protocol):
-    def fit(self, X, y, sample_weight=None):
-        ...
+    def fit(self, X, y, sample_weight=None): ...
 
-    def predict(self, X):
-        ...
+    def predict(self, X): ...
 
-    def predict_proba(self, X):
-        ...
+    def predict_proba(self, X): ...
 
-    def get_params(self, deep=True):
-        ...
+    def get_params(self, deep=True): ...
+
 
 class ScikitModel(Model[EstimatorProtocol]):
     def __init__(self, service: EstimatorProtocol):
@@ -77,17 +67,13 @@ class ScikitModel(Model[EstimatorProtocol]):
             raise ValueError(f"scikit-learn {class_name} estimator is not a {EstimatorProtocol}")
         return cls(model_class(**params))
 
-    def score(self,
-              X: Dataset,
-              y: Dataset,
-              metric: Type[Score],
-              **kwargs
-              ) -> float:
+    def score(self, X: Dataset, y: Dataset, metric: Type[Score], **kwargs) -> float:
         return metric.score(y, self.predict(X), **kwargs)
 
     def get_model_outputs(self) -> Dict[str, Any]:
-        outputs = {}
-        outputs['model_type'] = type(self._service).__name__
-        outputs['is_classifier'] = is_classifier(self._service)
-        outputs['params'] = self._service.get_params()
+        outputs = {
+            'model_type': type(self._service).__name__,
+            'is_classifier': is_classifier(self._service),
+            'params': self._service.get_params(),
+        }
         return outputs

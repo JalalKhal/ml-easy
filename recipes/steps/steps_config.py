@@ -1,13 +1,15 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
 from recipes.enum import ScoreType
 from recipes.interfaces.config import BaseStepConfig
 
+
 class RecipePathsConfig(BaseModel):
     recipe_root_path: str
     profile: Optional[str] = None
+
 
 class BaseIngestConfig(BaseStepConfig):
     ingest_fn: str
@@ -24,14 +26,17 @@ class BaseSplitConfig(BaseStepConfig):
 class BaseTransformConfig(BaseStepConfig):
     transformer_fn: str
 
+
 class Score(BaseModel):
     name: ScoreType
     params: Dict[str, Any]
+
 
 class BaseTrainConfig(BaseStepConfig):
     estimator_fn: str
     loss: str
     validation_metric: Score
+
 
 class EvaluateCriteria(BaseStepConfig):
     metric: Score
@@ -45,10 +50,4 @@ class BaseEvaluateConfig(BaseStepConfig):
 class BaseRegisterConfig(BaseStepConfig):
     register_fn: str
     artifact_path: str
-    allow_non_validated_model: bool
-
-
-
-
-
-
+    registered_model_name: Optional[str]

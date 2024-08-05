@@ -3,6 +3,8 @@ import importlib
 import os
 from typing import Any, Tuple, Type
 
+from typeguard import TypeCheckError, check_type
+
 from recipes.constants import (
     EXT_PY,
     SCORES_PATH,
@@ -37,14 +39,14 @@ def get_recipe_name(recipe_root_path: str) -> str:
     return os.path.basename(recipe_root_path)
 
 
-def _get_class_from_string(fully_qualified_class_name) -> Any:
+def get_class_from_string(fully_qualified_class_name) -> Any:
     module, class_name = fully_qualified_class_name.rsplit('.', maxsplit=1)
     return getattr(importlib.import_module(module), class_name)
 
 
 def load_class(fully_qualified_class_name: str) -> Any:
     try:
-        class_module = _get_class_from_string(fully_qualified_class_name)
+        class_module = get_class_from_string(fully_qualified_class_name)
     except Exception as e:
         if isinstance(e, ModuleNotFoundError):
             raise MlflowException(
@@ -156,7 +158,15 @@ def _get_step_output_directory_path(execution_directory_path: str, step_name: st
     )
 
 
-def get_step_output_path(recipe_root_path: str, step_name: str) -> str:
+def is_instance_for_generic(obj: Any, _class: Any) -> bool:
+    try:
+        check_type(obj, _class)
+        return True
+    except TypeCheckError:
+        return False
+
+
+def get_step_output_path(recipe_root_path: str, step_name: str, relative_path: str = '') -> str:
     """
     Obtains the absolute path of the specified step output on the local filesystem. Does
     not check the existence of the output.
@@ -177,7 +187,7 @@ def get_step_output_path(recipe_root_path: str, step_name: str) -> str:
         execution_directory_path=execution_dir_path,
         step_name=step_name,
     )
-    return os.path.abspath(os.path.join(step_outputs_path))
+    return os.path.abspath(os.path.join(step_outputs_path, relative_path))
 
 
 def get_state_output_dir(step_path: str, state_file_name: str) -> str:

@@ -1,4 +1,7 @@
-.idea
-__pycache__
-*.pyc
-recipes/test.csv
+__pycache__/
+.idea/
+*.csv
+*.log-model.history
+*.pkl
+mlartifacts/
+mlruns/
