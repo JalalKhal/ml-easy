@@ -49,7 +49,7 @@ class MlflowInference(Inference):
 
 
 if __name__ == '__main__':
-    inf = MlflowInference('http://127.0.0.1:5000', 5001, 'registered_model_name:11')
+    inf = MlflowInference('http://127.0.0.1:5000', 5001, 'registered_model_name:1')
     predictions = inf.predict(
         PolarsDataset.read_csv(
             '/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv',
