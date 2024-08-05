@@ -44,25 +44,6 @@ class Dataset(ABC, Generic[V]):
     def to_pandas(self) -> pd.DataFrame:
         pass
 
-    @classmethod
-    @abstractmethod
-    def read_csv(
-        cls,
-        source: str | Path | IO[str] | IO[bytes] | bytes,
-        separator: str,
-        encoding: str = 'utf8',
-        transform_columns: Callable[[str], str] = lambda x: x,
-    ) -> Self:
-        pass
-
-    @abstractmethod
-    def write_csv(
-        self,
-        file: str,
-        separator: str = ',',
-    ) -> None:
-        pass
-
     @abstractmethod
     def split(self, train_prop: float, val_prop: float) -> Tuple[Self, Self, Self]:
         pass
@@ -249,12 +230,13 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
             col_filter = filters[col]
             if col_filter:
                 if is_instance_for_generic(col_filter, EqualFilter[str]):
-                    predicates_expr.append(pl.col(col) == col_filter.value)
+                    predicates_expr.append(pl.col(col) == col_filter.value)  # type:ignore
                 elif is_instance_for_generic(col_filter, InFilter[str]):
-                    predicates_expr.append(pl.col(col).is_in(col_filter.values))
+                    predicates_expr.append(pl.col(col).is_in(col_filter.values))  # type:ignore
                 else:
                     raise MlflowException(
-                        message=f'Unsupported filter type {col_filter.__class__.__name__}', error_code=MLFlowErrorCode
+                        message=f'Unsupported filter type {col_filter.__class__.__name__}',
+                        error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
                     )
 
         return self.__class__(self.service.filter(predicates_expr))

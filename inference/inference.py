@@ -2,11 +2,11 @@ import json
 import pickle
 from abc import abstractmethod
 
-import mlflow
+import mlflow  # type:ignore
 import numpy as np
 import requests
 from mlflow import MlflowClient
-from mlflow.entities.model_registry import ModelVersion
+from mlflow.entities.model_registry import ModelVersion  # type:ignore
 
 from recipes.steps.ingest.datasets import Dataset, PolarsDataset
 from recipes.steps.transform.transformer import Transformer
