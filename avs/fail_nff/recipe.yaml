@@ -30,37 +30,79 @@
         location: "/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv"
         sep: ","
         encoding: "ISO-8859-1"
-        filters:
-            #fail_/_nff:
-                #type: "EqualFilter"
-                #values: "Y"
-
-
-
 
     split:
         split_fn: "split_fn"
         split_ratios: [ 0.75, 0.125, 0.125 ]
 
-
     transform:
         transformer_fn: "transformer_fn"
         cols:
             cm_motif_dep:
-                path : "sklearn.feature_extraction.text.TfidfVectorizer"
-                params:
-                    max_features : 5000
-                    ngram_range : (1,3)
+                embedder:
+                    path : "sklearn.feature_extraction.text.TfidfVectorizer"
+                    params:
+                        max_features : 5000
+                        ngram_range : (1,3)
+                filters:
+                    - &blanck_filter
+                      type: "EqualFilter"
+                      neg: 1
+                      value: "black"
+                    - type: "InFilter"
+                      neg: 0
+                      values: ["N", "Y"]
+                    - &not_in_filter_vide
+                      type: "InFilter"
+                      neg: 1
+                      values: ["vide"]
             cm_action_correc:
-                path: "sklearn.feature_extraction.text.TfidfVectorizer"
-                params:
-                    max_features: 5000
-                    ngram_range: (1,3)
+                embedder:
+                    path: "sklearn.feature_extraction.text.TfidfVectorizer"
+                    params:
+                        max_features: 5000
+                        ngram_range: (1,3)
+                filters:
+                    - <<: *not_in_filter_vide
+                    - <<: *blanck_filter
             cm_info_interne:
-                path: "sklearn.feature_extraction.text.TfidfVectorizer"
-                params:
-                    max_features: 5000
-                    ngram_range: (1,3)
+                embedder:
+                    path: "sklearn.feature_extraction.text.TfidfVectorizer"
+                    params:
+                        max_features: 5000
+                        ngram_range: (1,3)
+                filters:
+                    - <<: *not_in_filter_vide
+                    - <<: *blanck_filter
+            cm_constat_visu:
+                embedder:
+                    path: "sklearn.feature_extraction.text.TfidfVectorizer"
+                    params:
+                        max_features: 5000
+                        ngram_range: (1,3)
+                filters:
+                    - <<: *not_in_filter_vide
+                    - <<: *blanck_filter
+            fl_valid:
+                embedder:
+                filters:
+                    - type: "EqualFilter"
+                      neg: 0
+                      value: "V"
+            reason_of_removal:
+                embedder:
+                filters:
+                    - type: "InFilter"
+                      neg: 1
+                      values: ["PARKED", "DOUBLE", "1st Fit"]
+            rmv_type:
+                embedder:
+                filters:
+                    - type: "EqualFilter"
+                      neg: 1
+                      value: "U"
+
+
 
     train:
         estimator_fn: "estimator_fn"
