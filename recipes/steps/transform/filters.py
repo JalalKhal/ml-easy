@@ -7,8 +7,8 @@ U = TypeVar('U')
 
 
 class Filter(ABC, Generic[U]):
-    def __init__(self):
-        pass
+    def __init__(self, neg: bool):
+        self.neg = neg
 
     @abstractmethod
     def filter(self, x: U) -> bool:
@@ -23,18 +23,20 @@ class Filter(ABC, Generic[U]):
 
 
 class EqualFilter(Filter[U], Generic[U]):
-    def __init__(self, value: U):
-        super().__init__()
+    def __init__(self, value: U, neg: bool):
+        super().__init__(neg)
         self.value = value
 
     def filter(self, x: U) -> bool:
-        return x == self.value
+        pos = x == self.value
+        return ~pos if self.neg else pos
 
 
 class InFilter(Filter[U], Generic[U]):
-    def __init__(self, values: List[U]):
-        super().__init__()
+    def __init__(self, values: List[U], neg: bool):
+        super().__init__(neg)
         self.values = values
 
     def filter(self, x: U) -> bool:
-        return x in self.values
+        pos = x in self.values
+        return ~pos if self.neg else pos

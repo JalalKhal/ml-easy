@@ -27,7 +27,6 @@ class Context(BaseModel):
 
 
 class BaseRecipeConfig(BaseModel):
-    steps: BaseStepsConfig
     recipe: str
     context: Context
 

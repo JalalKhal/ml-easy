@@ -1,14 +1,13 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, Protocol, Self, TypeVar
+from typing import Any, Dict, Generic, List, Optional, Protocol, Self, TypeVar, Union
 
 from numpy import hstack
 
 from recipes.classification.v1.config import ClassificationTransformConfig
-from recipes.enum import MLFlowErrorCode
-from recipes.exceptions import MlflowException
 from recipes.interfaces.config import Context
 from recipes.steps.ingest.datasets import Dataset, PolarsDataset
+from recipes.steps.transform.filters import EqualFilter, InFilter
 
 U = TypeVar('U')
 
@@ -19,16 +18,16 @@ class Transformer(ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: Dataset, y: Optional[Dataset] = None) -> None:
+    def fit(self, X: Dataset) -> None:
         pass
 
     @abstractmethod
-    def transform(self, X: Dataset, y: Optional[Dataset] = None) -> Dataset:
+    def transform(self, X: Dataset) -> Dataset:
         pass
 
-    def fit_transform(self, X: Dataset, y: Optional[Dataset] = None) -> Dataset:
-        self.fit(X, y)
-        return self.transform(X, y)
+    def fit_transform(self, X: Dataset) -> Dataset:
+        self.fit(X)
+        return self.transform(X)
 
 
 class LibraryTransformer(Transformer, ABC, Generic[U]):
@@ -58,21 +57,12 @@ class ScikitEmbedder(LibraryTransformer):
     def __init__(self, service: ScikitService):
         super().__init__(service)
 
-    def fit(self, X: Dataset, y: Optional[Dataset] = None) -> None:
+    def fit(self, X: Dataset) -> None:
         self._service.fit(X.to_numpy().reshape(-1))
 
-    def transform(self, X: Dataset, y: Optional[Dataset] = None) -> Dataset:
+    def transform(self, X: Dataset) -> Dataset:
         ds_tf = self._service.transform(X.to_numpy().reshape(-1))
-        tf_X: PolarsDataset = PolarsDataset.from_numpy(data=ds_tf.toarray())
-        if y:
-            if isinstance(y, PolarsDataset):
-                return PolarsDataset.concat([tf_X, y])
-            else:
-                raise MlflowException(
-                    f"{y.__class__.__name__} is not a {PolarsDataset}", error_code=MLFlowErrorCode.INTERNAL_ERROR
-                )
-        else:
-            return tf_X
+        return PolarsDataset.from_numpy(data=ds_tf.toarray())
 
 
 class MultipleTfIdfTransformer(Transformer):
@@ -81,25 +71,55 @@ class MultipleTfIdfTransformer(Transformer):
         self.conf = conf
         self.context = context
         self.embedder = {
-            col: ScikitEmbedder.load_from_library(conf.cols[col].path, conf.cols[col].params) for col in conf.cols
+            col: ScikitEmbedder.load_from_library(conf.cols[col].embedder.path, conf.cols[col].embedder.params)
+            for col in conf.cols
+            if conf.cols[col].embedder
         }
 
-    def fit(self, X: Dataset, y: Optional[Dataset] = None) -> None:
-        for col in self.conf.cols:
-            self.embedder[col].fit(X.select([col]), y)
+    def fit(self, X: Dataset) -> None:
+        for col in self.embedder:
+            self.embedder[col].fit(X.select([col]))
 
-    def transform(self, X: Dataset, y: Optional[Dataset] = None) -> Dataset:
-        tf_X: List[PolarsDataset] = [
+    def transform(self, X: Dataset) -> Dataset:
+        tfs_X: List[PolarsDataset] = [
             PolarsDataset.from_numpy(
-                hstack([self.embedder[col].transform(X.select([col])).to_numpy() for col in self.conf.cols])
+                hstack(
+                    [
+                        (
+                            self.embedder[col].transform(X.select([col])).to_numpy()
+                            if self.conf.cols[col].embedder
+                            else X.select(col).to_numpy()
+                        )
+                        for col in self.conf.cols
+                    ]
+                )
             ),
         ]
-        if y:
-            if isinstance(y, PolarsDataset):
-                return PolarsDataset.concat(tf_X + [y], how='horizontal')
-            else:
-                raise MlflowException(
-                    f"{y.__class__.__name__} is not a {PolarsDataset}", error_code=MLFlowErrorCode.INTERNAL_ERROR
-                )
-        else:
-            return PolarsDataset.concat(tf_X, how='horizontal')
+        return PolarsDataset.concat(items=tfs_X, how='horizontal')
+
+
+class FilterTransformer(Transformer):
+    def __init__(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]):
+        super().__init__()
+        self.filters = filters
+
+    def fit(self, X: Dataset) -> None:
+        pass
+
+    def transform(self, X: Dataset) -> Dataset:
+        return X.filter(self.filters)
+
+
+class PipelineTransformer(Transformer):
+    def __init__(self, transformers: List[Transformer]):
+        super().__init__()
+        self._transformers = transformers
+
+    def fit(self, X: Dataset) -> None:
+        for transformer in self._transformers:
+            transformer.fit(X)
+
+    def transform(self, X: Dataset) -> Dataset:
+        for transformer in self._transformers:
+            X = transformer.transform(X)
+        return X

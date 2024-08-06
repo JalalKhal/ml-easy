@@ -46,7 +46,7 @@ class ClassificationTransformStep(TransformStep[ClassificationTransformConfig]):
         self.validate_step_result(transformer, Transformer)
         self.card.transformer_path = f"{self.card.step_output_path}/transformer.pkl"
         X, y = get_features_target(message.ingest.dataset, self.context.target_col)  # type:ignore
-        self.card.tf_dataset = transformer.fit_transform(X, y)
+        self.card.tf_dataset = transformer.fit_transform(X).concatenate([y])
         with open(self.card.transformer_path, 'wb') as f:
             pickle.dump(transformer, f)
         self.card.config = self.conf

@@ -91,6 +91,12 @@ class Dataset(ABC, Generic[V]):
         pass
 
     @abstractmethod
+    def concatenate(
+        self, items: Iterable[Self], *, how: ConcatMethod = 'vertical', rechunk: bool = False, parallel: bool = True
+    ) -> Self:
+        pass
+
+    @abstractmethod
     def write_csv(
         self,
         file: str | Path | IO[str] | IO[bytes] | None = None,
@@ -207,6 +213,11 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
     ) -> Self:
         return cls(pl.concat([it.service for it in items], how=how, rechunk=rechunk, parallel=parallel))  # type: ignore
 
+    def concatenate(
+        self, items: Iterable[Self], *, how: ConcatMethod = 'vertical', rechunk: bool = False, parallel: bool = True
+    ) -> Self:
+        return self.__class__.concat([self] + items, how='horizontal', rechunk=rechunk, parallel=parallel)
+
     def select(self, cols: List[str]) -> Self:
         return self.__class__(service=self.get_dataframe().select(cols))
 
@@ -222,22 +233,25 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
     ) -> Self:
         return self.__class__(self.service.drop_nulls(subset))
 
-    def filter(self, filters: Dict[str, Optional[Union[EqualFilter[str], InFilter[str]]]]) -> Self:
+    def filter(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]) -> Self:
         from recipes.utils import is_instance_for_generic
+
+        def _get_expr_filter(col_filter: Union[EqualFilter[str], InFilter[str]]):
+            if is_instance_for_generic(col_filter, EqualFilter[str]):
+                return pl.col(col) == col_filter.value  # type:ignore
+            elif is_instance_for_generic(col_filter, InFilter[str]):
+                return pl.col(col).is_in(col_filter.values)  # type:ignore
+            else:
+                raise MlflowException(
+                    message=f'Unsupported filter type {col_filter.__class__.__name__}',
+                    error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+                )
 
         predicates_expr = []
         for col in filters:
-            col_filter = filters[col]
-            if col_filter:
-                if is_instance_for_generic(col_filter, EqualFilter[str]):
-                    predicates_expr.append(pl.col(col) == col_filter.value)  # type:ignore
-                elif is_instance_for_generic(col_filter, InFilter[str]):
-                    predicates_expr.append(pl.col(col).is_in(col_filter.values))  # type:ignore
-                else:
-                    raise MlflowException(
-                        message=f'Unsupported filter type {col_filter.__class__.__name__}',
-                        error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
-                    )
+            col_filters = filters[col]
+            for filter in col_filters:
+                predicates_expr.append(_get_expr_filter(filter))
 
         return self.__class__(self.service.filter(predicates_expr))
 

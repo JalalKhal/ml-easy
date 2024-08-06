@@ -16,11 +16,34 @@ from recipes.steps.steps_config import (
 
 class FilterConfig(BaseModel):
     type: FilterType
-    values: Union[str, List[str]]
+
+
+class EqualFilterConfig(FilterConfig):
+    neg: bool
+    value: str
+
+    @field_validator('type')
+    @classmethod
+    def check_type(cls, type: FilterType):
+        if type != FilterType.EQUAL:
+            raise ValueError('Type must be EqualFilter for EqualFilterConfig')
+        return type
+
+
+class InFilterConfig(FilterConfig):
+    neg: bool
+    values: List[str]
+
+    @field_validator('type')
+    @classmethod
+    def check_type(cls, type: FilterType):
+        if type != FilterType.IN:
+            raise ValueError('Type must be InFilter for InFilterConfig')
+        return type
 
 
 class ClassificationIngestConfig(BaseIngestConfig):
-    filters: Optional[Dict[str, FilterConfig]]
+    pass
 
 
 class LibraryEmbedder(BaseModel):
@@ -34,8 +57,13 @@ class LibraryEmbedder(BaseModel):
         return v
 
 
+class ColConfig(BaseModel):
+    embedder: Optional[LibraryEmbedder]
+    filters: Optional[List[Union[EqualFilterConfig, InFilterConfig]]]
+
+
 class ClassificationTransformConfig(BaseTransformConfig):
-    cols: Dict[str, LibraryEmbedder]
+    cols: Dict[str, ColConfig]
 
 
 class ClassificationSplitConfig(BaseSplitConfig):
