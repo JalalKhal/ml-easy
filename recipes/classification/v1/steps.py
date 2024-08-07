@@ -46,7 +46,7 @@ class ClassificationTransformStep(TransformStep[ClassificationTransformConfig]):
         self.validate_step_result(transformer, Transformer)
         self.card.transformer_path = f"{self.card.step_output_path}/transformer.pkl"
         X, y = get_features_target(message.ingest.dataset, self.context.target_col)  # type:ignore
-        self.card.tf_dataset = transformer.fit_transform(X).concatenate([y])
+        self.card.tf_dataset = (transformer.fit_transform(X), y)
         with open(self.card.transformer_path, 'wb') as f:
             pickle.dump(transformer, f)
         self.card.config = self.conf
@@ -60,7 +60,7 @@ class ClassificationSplitStep(SplitStep[ClassificationSplitConfig]):
     def _run(self, message: StepMessage) -> StepMessage:
         dataset_splitter: Any = self.get_step_result()
         self.validate_step_result(dataset_splitter, DatasetSplitter)
-        self.card.train_val_test = dataset_splitter.split(message.transform.tf_dataset)  # type: ignore
+        self.card.train_val_test = dataset_splitter.split(*message.transform.tf_dataset)  # type: ignore
         return message
 
 
@@ -71,15 +71,15 @@ class ClassificationTrainStep(TrainStep[ClassificationTrainConfig]):
     def _run(self, message: StepMessage) -> StepMessage:
         model: Any = self.get_step_result()
         self.validate_step_result(model, Model)
-        train: Dataset = message.split.train_val_test[0].collect()  # type: ignore
-        val: Dataset = message.split.train_val_test[1].collect()  # type: ignore
-        X_train, y_train = get_features_target(train, self.context.target_col)
-        X_val, y_val = get_features_target(val, self.context.target_col)
-        model.fit(X_train, y_train)
+        (X_train, y_train), (X_val, y_val), _ = message.split.train_val_test
+        model.fit(X_train.collect(), y_train.collect())
         self.card.mod = model
         self.card.mod_outputs = model.get_model_outputs()
         self.card.val_metric = model.score(
-            X_val, y_val, metric=get_score_class(self.conf.validation_metric.name), **self.conf.validation_metric.params
+            X_val.collect(),
+            y_val.collect(),
+            metric=get_score_class(self.conf.validation_metric.name),
+            **self.conf.validation_metric.params,
         )
         return message
 
@@ -89,13 +89,15 @@ class ClassificationEvaluateStep(EvaluateStep[ClassificationEvaluateConfig]):
         super().__init__(evaluate_config, context)
 
     def _run(self, message: StepMessage) -> StepMessage:
-        test: Dataset = message.split.train_val_test[0].collect()  # type: ignore
-        X_test, y_test = get_features_target(test, self.context.target_col)
+        _, _, (X_test, y_test) = message.split.train_val_test
         model: Model = message.train.mod  # type: ignore
         metrics_eval: List[Metric] = []
         for criteria in self.conf.validation_criteria:
             score: float = model.score(
-                X_test, y_test, metric=get_score_class(criteria.metric.name), **criteria.metric.params
+                X_test.collect(),
+                y_test.collect(),
+                metric=get_score_class(criteria.metric.name),
+                **criteria.metric.params,
             )
             metrics_eval.append(Metric(name=criteria.metric, value=score))
         self.card.metrics_eval = metrics_eval

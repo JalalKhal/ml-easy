@@ -237,6 +237,6 @@ def get_score_class(score: ScoreType) -> Type[Score]:
 
 
 def get_features_target(dataset: Dataset, target_col: str) -> Tuple[Dataset, Dataset]:
-    X: Dataset = dataset.select([c for c in dataset.columns() if c != target_col])
+    X: Dataset = dataset.select([c for c in dataset.columns if c != target_col])
     y: Dataset = dataset.select([target_col])
     return X, y

@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
+from recipes._typing import TupleDataset
 from recipes.interfaces.config import BaseCard
 from recipes.steps.ingest.datasets import Dataset
 from recipes.steps.steps_config import BaseTransformConfig, Score
@@ -14,14 +15,14 @@ class IngestCard(BaseCard):
 
 
 class TransformCard(BaseCard):
-    tf_dataset: Optional[Dataset] = None
+    tf_dataset: Optional[TupleDataset] = None
     config: Optional[BaseTransformConfig] = None
     transformer_path: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class SplitCard(BaseCard):
-    train_val_test: Optional[Tuple[Dataset, Dataset, Dataset]] = None
+    train_val_test: Optional[Tuple[TupleDataset, TupleDataset, TupleDataset]] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 

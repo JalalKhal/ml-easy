@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.base import is_classifier  # type: ignore
 
 from recipes.steps.evaluate.score import Score
-from recipes.steps.ingest.datasets import Dataset
+from recipes.steps.ingest.datasets import Dataset, PolarsDataset
 
 U = TypeVar('U')
 
@@ -14,6 +14,10 @@ U = TypeVar('U')
 class Model(ABC, Generic[U]):
     def __init__(self, service: U):
         self._service = service
+
+    @property
+    def service(self) -> U:
+        return self._service
 
     @abstractmethod
     def fit(self, X: Dataset, y: Dataset) -> None:
@@ -54,8 +58,8 @@ class ScikitModel(Model[EstimatorProtocol]):
         self._service.fit(X.to_numpy(), y.to_numpy().reshape(-1))
 
     def predict(self, X: Dataset) -> Dataset:
-        y: np.ndarray = self._service.predict(X.to_numpy())
-        return X.from_numpy(y)
+        yhat: np.ndarray = self._service.predict(X.to_csr())
+        return PolarsDataset.from_numpy(yhat)
 
     @classmethod
     def load_from_library(cls, path: str, params: Dict[str, Any]) -> Self:

@@ -6,11 +6,9 @@ This module defines the following routines used by the 'transform' step of the r
 """
 
 from recipes.classification.v1.config import ClassificationTransformConfig
-from recipes.constants import FILTER_TO_MODULE
 from recipes.interfaces.config import Context
-from recipes.steps.transform.filters import Filter
 from recipes.steps.transform.transformer import (
-    FilterTransformer,
+    FormaterTransformer,
     MultipleTfIdfTransformer,
     PipelineTransformer,
     Transformer,
@@ -24,9 +22,11 @@ def transformer_fn(conf: ClassificationTransformConfig, context: Context) -> Tra
     transformers.
     """
 
-    return PipelineTransformer(
-        [
-            FilterTransformer(
+    return PipelineTransformer([FormaterTransformer(conf), MultipleTfIdfTransformer(conf, context)])
+
+
+"""
+FilterTransformer(
                 {
                     col: [
                         Filter.load_from_path(FILTER_TO_MODULE[filter_conf.type])(
@@ -38,6 +38,4 @@ def transformer_fn(conf: ClassificationTransformConfig, context: Context) -> Tra
                     if conf.cols[col].filters
                 }
             ),
-            MultipleTfIdfTransformer(conf, context),
-        ]
-    )
+"""

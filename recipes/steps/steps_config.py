@@ -51,3 +51,4 @@ class BaseRegisterConfig(BaseStepConfig):
     register_fn: str
     artifact_path: str
     registered_model_name: Optional[str]
+    dataset_location: Optional[str]

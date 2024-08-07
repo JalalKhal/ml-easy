@@ -12,6 +12,7 @@ from recipes.steps.steps_config import (
     BaseTrainConfig,
     BaseTransformConfig,
 )
+from recipes.steps.transform.formatter.formatter import TextFormatterConfig
 
 
 class FilterConfig(BaseModel):
@@ -59,6 +60,7 @@ class LibraryEmbedder(BaseModel):
 
 class ColConfig(BaseModel):
     embedder: Optional[LibraryEmbedder]
+    formatter: Optional[TextFormatterConfig]
     filters: Optional[List[Union[EqualFilterConfig, InFilterConfig]]]
 
 

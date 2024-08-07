@@ -7,7 +7,6 @@ from recipes.interfaces.config import Context
 from recipes.steps.cards_config import StepMessage
 from recipes.steps.steps_config import BaseRegisterConfig
 from recipes.steps.train.models import ScikitModel
-from recipes.utils import get_features_target
 
 
 class Registry:
@@ -22,6 +21,10 @@ class Registry:
     def log_embedder(self, message: StepMessage) -> None:
         pass
 
+    @abstractmethod
+    def log_dataset(self, message: StepMessage) -> None:
+        pass
+
 
 class MlflowRegistry(Registry):
 
@@ -33,19 +36,24 @@ class MlflowRegistry(Registry):
     def log_embedder(self, message: StepMessage) -> None:
         mlflow.log_artifact(message.transform.transformer_path, 'transformer')  # type:ignore
 
+    def log_dataset(self, message: StepMessage) -> None:
+        (X, y) = message.transform.tf_dataset
+        mlflow.log_input(X.get_mlflow_dataset(self.conf.dataset_location))
+        mlflow.log_input(y.get_mlflow_dataset(self.conf.dataset_location))
+
     def log_model(self, message: StepMessage) -> None:
         mlflow.set_tracking_uri(self.context.experiment.tracking_uri)  # type:ignore
         mlflow.set_experiment(self.context.experiment.name)  # type:ignore
         with mlflow.start_run():
             self.log_embedder(message)
+            self.log_dataset(message)
             if isinstance(message.train.mod, ScikitModel):  # type:ignore
-                train, validation, test = message.split.train_val_test  # type:ignore
-                X_test, y_test = get_features_target(test, self.context.target_col)  # type:ignore
+                _, _, (X_test, y_test) = message.split.train_val_test
                 signature = infer_signature(
-                    X_test.to_numpy(), message.train.mod.predict(X_test).to_numpy().reshape(-1)  # type: ignore
+                    X_test[:3, :].to_numpy(), message.train.mod.predict(X_test[:3, :]).to_numpy().reshape(-1)  # type: ignore
                 )  # type:ignore
                 mlflow.sklearn.log_model(
-                    message.train.mod._service,  # type:ignore
+                    message.train.mod.service,  # type:ignore
                     self.conf.artifact_path,  # type:ignore
                     signature=signature,
                     registered_model_name=self.conf.registered_model_name,  # type:ignore

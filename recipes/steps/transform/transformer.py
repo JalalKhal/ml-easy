@@ -2,12 +2,11 @@ import importlib
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, List, Optional, Protocol, Self, TypeVar, Union
 
-from numpy import hstack
-
 from recipes.classification.v1.config import ClassificationTransformConfig
 from recipes.interfaces.config import Context
-from recipes.steps.ingest.datasets import Dataset, PolarsDataset
+from recipes.steps.ingest.datasets import CsrMatrixDataset, Dataset
 from recipes.steps.transform.filters import EqualFilter, InFilter
+from recipes.steps.transform.formatter.formatter import AvsCleaner, AvsLemmatizer
 
 U = TypeVar('U')
 
@@ -62,7 +61,7 @@ class ScikitEmbedder(LibraryTransformer):
 
     def transform(self, X: Dataset) -> Dataset:
         ds_tf = self._service.transform(X.to_numpy().reshape(-1))
-        return PolarsDataset.from_numpy(data=ds_tf.toarray())
+        return CsrMatrixDataset(ds_tf)
 
 
 class MultipleTfIdfTransformer(Transformer):
@@ -81,21 +80,12 @@ class MultipleTfIdfTransformer(Transformer):
             self.embedder[col].fit(X.select([col]))
 
     def transform(self, X: Dataset) -> Dataset:
-        tfs_X: List[PolarsDataset] = [
-            PolarsDataset.from_numpy(
-                hstack(
-                    [
-                        (
-                            self.embedder[col].transform(X.select([col])).to_numpy()
-                            if self.conf.cols[col].embedder
-                            else X.select(col).to_numpy()
-                        )
-                        for col in self.conf.cols
-                    ]
-                )
-            ),
+        tfs_X: List[CsrMatrixDataset] = [
+            CsrMatrixDataset(self.embedder[col].transform(X.select([col])).to_csr())
+            for col in self.conf.cols
+            if self.conf.cols[col].embedder
         ]
-        return PolarsDataset.concat(items=tfs_X, how='horizontal')
+        return CsrMatrixDataset.concat(tfs_X, how='horizontal')
 
 
 class FilterTransformer(Transformer):
@@ -110,14 +100,41 @@ class FilterTransformer(Transformer):
         return X.filter(self.filters)
 
 
+class FormaterTransformer(Transformer):
+
+    def __init__(self, config: ClassificationTransformConfig):
+        super().__init__()
+        self.config = config
+        self.text_cleaner = {
+            col: AvsCleaner(config_settings=self.config.cols[col].formatter.cleaner)
+            for col in self.config.cols
+            if self.config.cols[col].formatter
+        }
+        self.lemmatizer = AvsLemmatizer()
+
+    def fit(self, X: Dataset) -> None:
+        pass
+
+    def transform(self, X: Dataset) -> Dataset:
+        # TO DO : Can be optimized take too long time to process
+        def func(col):
+            def _func(x):
+                return self.lemmatizer(self.text_cleaner[col](x))
+
+            return _func
+
+        return X.map_str({col: func(col) for col in self.config.cols if self.config.cols[col].formatter})
+
+
 class PipelineTransformer(Transformer):
     def __init__(self, transformers: List[Transformer]):
         super().__init__()
         self._transformers = transformers
 
     def fit(self, X: Dataset) -> None:
-        for transformer in self._transformers:
-            transformer.fit(X)
+        for transformer in self._transformers[:-1]:
+            X = transformer.fit_transform(X)
+        self._transformers[-1].fit(X)
 
     def transform(self, X: Dataset) -> Dataset:
         for transformer in self._transformers:

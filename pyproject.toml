@@ -20,6 +20,9 @@ pre-commit = "^3.8.0"
 mlflow = "^2.15.0"
 typeguard = "^4.3.0"
 types-requests = "^2.32.0.20240712"
+regex = "^2024.7.24"
+nltk = "^3.8.1"
+starlette = "^0.38.2"
 
 
 [build-system]
