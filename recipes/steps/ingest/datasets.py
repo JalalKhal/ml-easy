@@ -95,7 +95,7 @@ class Dataset(ABC, Generic[V]):
         pass
 
     @abstractmethod
-    def filter(self, filters: Dict[str, Optional[Union[EqualFilter[str], InFilter[str]]]]) -> Self:
+    def filter(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]) -> Self:
         pass
 
     @abstractmethod
@@ -156,7 +156,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        return self.service.shape
+        return self.get_dataframe().shape
 
     def to_pandas(self):
         return self.get_dataframe().to_pandas()
@@ -345,7 +345,7 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
 
     def select(self, cols: List[int]) -> Self:
         sub_matrix = self.service[:, cols]
-        return CsrMatrixDataset(sub_matrix)
+        return self.__class__(sub_matrix)
 
     @property
     def columns(self) -> List[int]:
@@ -358,7 +358,7 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
     def collect(self) -> Self:
         return self
 
-    def filter(self, filters: Dict[str, Optional[Union['EqualFilter[str]', 'InFilter[str]']]]) -> Self:
+    def filter(self, filters: Dict[str, Optional[List[Union['EqualFilter[str]', 'InFilter[str]']]]]) -> Self:
         raise NotImplementedError('Filtering not implemented for CSR matrices.')
 
     def drop_nulls(self, subset: Union[str, List[str], None] = None) -> Self:
@@ -386,7 +386,7 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
         if length is None:
             length = self.service.shape[0] - offset
         sub_matrix = self.service[offset : offset + length, :]
-        return CsrMatrixDataset(sub_matrix)
+        return self.__class__(sub_matrix)
 
     def map_str(self, udf_map: Dict[str, Callable[[str], str]]) -> Self:
         raise NotImplementedError('String mapping not implemented for CSR matrices.')
