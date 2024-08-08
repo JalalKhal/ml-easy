@@ -280,8 +280,8 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         return hasher.digest().hex()
 
     def get_mlflow_dataset(self, source: str) -> MLflowDataset:
-        from mlflow.data.dataset_source_registry import (
-            resolve_dataset_source,  # type: ignore; type: ignore
+        from mlflow.data.dataset_source_registry import (  # type: ignore
+            resolve_dataset_source,
         )
 
         class PolarsMLFlowDataset(MLflowDataset):
