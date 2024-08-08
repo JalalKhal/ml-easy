@@ -281,7 +281,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
 
     def get_mlflow_dataset(self, source: str) -> MLflowDataset:
         from mlflow.data.dataset_source_registry import (
-            resolve_dataset_source,  # type: ignore
+            resolve_dataset_source,  # type: ignore; type: ignore
         )
 
         class PolarsMLFlowDataset(MLflowDataset):
