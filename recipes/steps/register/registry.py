@@ -37,9 +37,9 @@ class MlflowRegistry(Registry):
         mlflow.log_artifact(message.transform.transformer_path, 'transformer')  # type:ignore
 
     def log_dataset(self, message: StepMessage) -> None:
-        (X, y) = message.transform.tf_dataset
-        mlflow.log_input(X.get_mlflow_dataset(self.conf.dataset_location))
-        mlflow.log_input(y.get_mlflow_dataset(self.conf.dataset_location))
+        (X, y) = message.transform.tf_dataset  # type: ignore
+        mlflow.log_input(X.get_mlflow_dataset(self.conf.dataset_location))  # type: ignore
+        mlflow.log_input(y.get_mlflow_dataset(self.conf.dataset_location))  # type: ignore
 
     def log_model(self, message: StepMessage) -> None:
         mlflow.set_tracking_uri(self.context.experiment.tracking_uri)  # type:ignore
@@ -48,7 +48,7 @@ class MlflowRegistry(Registry):
             self.log_embedder(message)
             self.log_dataset(message)
             if isinstance(message.train.mod, ScikitModel):  # type:ignore
-                _, _, (X_test, y_test) = message.split.train_val_test
+                _, _, (X_test, y_test) = message.split.train_val_test  # type: ignore
                 signature = infer_signature(
                     X_test[:3, :].to_numpy(), message.train.mod.predict(X_test[:3, :]).to_numpy().reshape(-1)  # type: ignore
                 )  # type:ignore

@@ -49,12 +49,14 @@ class MlflowInference(Inference):
 
 
 if __name__ == '__main__':
-    inf = MlflowInference('http://127.0.0.1:5000', 5001, 'registered_model_name:9')
-    predictions = inf.predict(
-        PolarsDataset.read_csv(
-            '/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv',
-            separator=',',
-            encoding='ISO-8859-1',
-        )[:5]
-    )
-    print(predictions.to_numpy())
+    target_col = 'fail_/_nff'
+    inf = MlflowInference('http://127.0.0.1:5000', 5001, 'registered_model_name:1')
+    ds: PolarsDataset = PolarsDataset.read_csv(
+        '/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv',
+        separator=',',
+        encoding='ISO-8859-1',
+    ).drop_nulls(target_col)[:1000]
+    predictions = inf.predict(ds).to_numpy()
+    true = ds.select(target_col).to_numpy()
+    score = np.mean(predictions == true)
+    print(score)

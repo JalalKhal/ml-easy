@@ -24,6 +24,7 @@ class Context(BaseModel):
 class BaseRecipeConfig(BaseModel):
     recipe: str
     context: Context
+    steps: BaseStepsConfig
 
 
 class BaseCard(BaseModel):

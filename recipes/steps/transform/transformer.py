@@ -70,7 +70,7 @@ class MultipleTfIdfTransformer(Transformer):
         self.conf = conf
         self.context = context
         self.embedder = {
-            col: ScikitEmbedder.load_from_library(conf.cols[col].embedder.path, conf.cols[col].embedder.params)
+            col: ScikitEmbedder.load_from_library(conf.cols[col].embedder.path, conf.cols[col].embedder.params)  # type: ignore
             for col in conf.cols
             if conf.cols[col].embedder
         }
@@ -106,7 +106,7 @@ class FormaterTransformer(Transformer):
         super().__init__()
         self.config = config
         self.text_cleaner = {
-            col: AvsCleaner(config_settings=self.config.cols[col].formatter.cleaner)
+            col: AvsCleaner(config_settings=self.config.cols[col].formatter.cleaner)  # type: ignore
             for col in self.config.cols
             if self.config.cols[col].formatter
         }

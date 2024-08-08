@@ -7,7 +7,6 @@ from typing import (
     IO,
     Any,
     Callable,
-    Collection,
     Dict,
     Generic,
     Iterable,
@@ -22,9 +21,9 @@ from typing import (
 import numpy as np
 import pandas as pd
 import polars as pl
-from mlflow.data.dataset import Dataset as MLflowDataset
-from polars._typing import ColumnNameOrSelector, ConcatMethod
-from scipy.sparse import csr_matrix, hstack, vstack
+from mlflow.data.dataset import Dataset as MLflowDataset  # type: ignore
+from polars._typing import ConcatMethod, IntoExpr
+from scipy.sparse import csr_matrix, hstack, vstack  # type: ignore
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
@@ -77,7 +76,7 @@ class Dataset(ABC, Generic[V]):
         pass
 
     @abstractmethod
-    def select(self, cols: List[str]) -> Self:
+    def select(self, *args: Any, **kwargs: Any) -> Self:
         pass
 
     @property
@@ -101,7 +100,7 @@ class Dataset(ABC, Generic[V]):
     @abstractmethod
     def drop_nulls(
         self,
-        subset: ColumnNameOrSelector | Collection[ColumnNameOrSelector] | None = None,
+        subset: Union[str, List[str], None] = None,
     ) -> Self:
         pass
 
@@ -153,20 +152,23 @@ class Dataset(ABC, Generic[V]):
 class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
     def __init__(self, service: pl.DataFrame | pl.LazyFrame):
         super().__init__(service)
+        self._get_dataframe: Optional[pl.DataFrame] = None
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        return self.get_dataframe().shape
+        return self.get_dataframe.shape
 
     def to_pandas(self):
-        return self.get_dataframe().to_pandas()
+        return self.get_dataframe.to_pandas()
 
+    @property
     def get_dataframe(self) -> pl.DataFrame:
-        df = self.service.collect() if isinstance(self.service, pl.LazyFrame) else self.service
-        return df
+        if self._get_dataframe is None:
+            self._get_dataframe = self.service.collect() if isinstance(self.service, pl.LazyFrame) else self.service
+        return self._get_dataframe
 
     def __iter__(self) -> Iterable:
-        ds: pl.DataFrame = self.get_dataframe()
+        ds: pl.DataFrame = self.get_dataframe
         return ds.__iter__()
 
     @classmethod
@@ -189,7 +191,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         return cls(service=ds)
 
     def to_numpy(self) -> np.ndarray[Any, Any]:
-        return self.get_dataframe().to_numpy()
+        return self.get_dataframe.to_numpy()
 
     @classmethod
     def from_numpy(
@@ -207,25 +209,30 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
     def concatenate(
         self, items: Iterable[Self], *, how: ConcatMethod = 'vertical', rechunk: bool = False, parallel: bool = True
     ) -> Self:
-        return self.__class__.concat([self] + items, how='horizontal', rechunk=rechunk, parallel=parallel)
+        return self.__class__.concat([self] + list(items), how='horizontal', rechunk=rechunk, parallel=parallel)
 
-    def select(self, cols: List[str]) -> Self:
-        return self.__class__(service=self.get_dataframe().select(cols))
+    def select(self, *exprs: IntoExpr | Iterable[IntoExpr], **named_exprs: IntoExpr) -> Self:
+        return self.__class__(service=self.service.select(*exprs, **named_exprs))
 
     @property
     def columns(self) -> List[str]:
-        return self.get_dataframe().columns
+        if isinstance(self.service, pl.LazyFrame):
+            return self.service.collect_schema().names()
+        return self.service.columns
 
     @property
     def dtypes(self) -> List[str]:
-        return [str(dtype) for dtype in self.service.dtypes]
+        dtypes = (
+            self.service.dtypes if isinstance(self.service, pl.DataFrame) else self.service.collect_schema().dtypes()
+        )
+        return [str(dtype) for dtype in dtypes]
 
     def collect(self) -> Self:
-        return self.__class__(self.get_dataframe())
+        return self.__class__(self.get_dataframe)
 
     def drop_nulls(
         self,
-        subset: ColumnNameOrSelector | Collection[ColumnNameOrSelector] | None = None,
+        subset: Union[str, List[str], None] = None,
     ) -> Self:
         return self.__class__(self.service.drop_nulls(subset))
 
@@ -246,7 +253,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         predicates_expr = []
         for col in filters:
             col_filters = filters[col]
-            for filter in col_filters:
+            for filter in col_filters:  # type: ignore
                 predicates_expr.append(_get_expr_filter(filter))
 
         return self.__class__(self.service.filter(predicates_expr))
@@ -262,18 +269,20 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         return csr_matrix(self.to_numpy())
 
     def _getitem(self, indices):
-        return self.__class__(self.get_dataframe().__getitem__(indices))
+        return self.__class__(self.get_dataframe.__getitem__(indices))
 
     @property
     def hash_dataset(self) -> str:
-        row_hashes = self.service.hash_rows(seed=42)
+        row_hashes = self.get_dataframe.hash_rows(seed=42)
         hasher = hashlib.sha256()
         for row_hash in row_hashes:
             hasher.update(row_hash.to_bytes(64, 'little'))
         return hasher.digest().hex()
 
     def get_mlflow_dataset(self, source: str) -> MLflowDataset:
-        from mlflow.data.dataset_source_registry import resolve_dataset_source
+        from mlflow.data.dataset_source_registry import (
+            resolve_dataset_source,  # type: ignore
+        )
 
         class PolarsMLFlowDataset(MLflowDataset):
             def __init__(self, ds: PolarsDataset):
@@ -283,7 +292,6 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
                 name = f"PolarsDataset_{self.dataset.shape[0]}x{self.dataset.shape[1]}"
                 super().__init__(source=source, name=name)
                 self.columns = self.dataset.columns
-                self.df = self.dataset.get_dataframe()
 
             def _compute_digest(self) -> str:
                 return self.dataset.hash_dataset
@@ -305,8 +313,6 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
                     'shape': self.dataset.shape,
                     'columns': self.dataset.columns,
                     'dtypes': {col: str(dtype) for col, dtype in zip(self.dataset.columns, self.dataset.dtypes)},
-                    'null_count': self.df.null_count().to_dict(),
-                    'memory_usage': self.df.estimated_size(),
                 }
 
             @property
@@ -348,8 +354,8 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
         return self.__class__(sub_matrix)
 
     @property
-    def columns(self) -> List[int]:
-        return list(range(self.service.shape[1]))
+    def columns(self) -> List[str]:
+        return [str(i) for i in range(self.service.shape[1])]
 
     @property
     def dtypes(self) -> List[str]:

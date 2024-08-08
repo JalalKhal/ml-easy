@@ -29,7 +29,7 @@ class EqualFilter(Filter[U], Generic[U]):
 
     def filter(self, x: U) -> bool:
         pos = x == self.value
-        return ~pos if self.neg else pos
+        return not pos if self.neg else pos
 
 
 class InFilter(Filter[U], Generic[U]):
@@ -39,4 +39,4 @@ class InFilter(Filter[U], Generic[U]):
 
     def filter(self, x: U) -> bool:
         pos = x in self.values
-        return ~pos if self.neg else pos
+        return not pos if self.neg else pos

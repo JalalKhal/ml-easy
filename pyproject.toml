@@ -23,6 +23,7 @@ types-requests = "^2.32.0.20240712"
 regex = "^2024.7.24"
 nltk = "^3.8.1"
 starlette = "^0.38.2"
+types-regex = "^2024.7.24.20240726"
 
 
 [build-system]

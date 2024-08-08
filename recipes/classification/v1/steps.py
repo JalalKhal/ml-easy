@@ -71,7 +71,7 @@ class ClassificationTrainStep(TrainStep[ClassificationTrainConfig]):
     def _run(self, message: StepMessage) -> StepMessage:
         model: Any = self.get_step_result()
         self.validate_step_result(model, Model)
-        (X_train, y_train), (X_val, y_val), _ = message.split.train_val_test
+        (X_train, y_train), (X_val, y_val), _ = message.split.train_val_test  # type: ignore
         model.fit(X_train.collect(), y_train.collect())
         self.card.mod = model
         self.card.mod_outputs = model.get_model_outputs()
@@ -89,7 +89,7 @@ class ClassificationEvaluateStep(EvaluateStep[ClassificationEvaluateConfig]):
         super().__init__(evaluate_config, context)
 
     def _run(self, message: StepMessage) -> StepMessage:
-        _, _, (X_test, y_test) = message.split.train_val_test
+        _, _, (X_test, y_test) = message.split.train_val_test  # type: ignore
         model: Model = message.train.mod  # type: ignore
         metrics_eval: List[Metric] = []
         for criteria in self.conf.validation_criteria:

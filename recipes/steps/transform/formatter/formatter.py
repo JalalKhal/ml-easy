@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict
 
-import nltk
+import nltk  # type: ignore
 import regex as re
 from nltk import WordNetLemmatizer, word_tokenize
-from nltk.corpus import wordnet as wn
+from nltk.corpus import wordnet as wn  # type: ignore
 from pydantic import BaseModel
 
 
