@@ -8,6 +8,7 @@ from typeguard import TypeCheckError, check_type
 from recipes.constants import (
     EXT_PY,
     SCORES_PATH,
+    SOURCE_TO_MODULE,
     STEP_OUTPUTS_SUBDIRECTORY_NAME,
     STEPS_SUBDIRECTORY_NAME,
 )
@@ -16,6 +17,10 @@ from recipes.env_vars import MLFLOW_RECIPES_EXECUTION_DIRECTORY
 from recipes.exceptions import MlflowException
 from recipes.steps.evaluate.score import Score
 from recipes.steps.ingest.datasets import Dataset
+from recipes.steps.register.mlflow_source.sql_table_dataset_source import (
+    DatasetSourceWrapper,
+)
+from recipes.steps.steps_config import SourceConfig
 
 
 def get_recipe_name(recipe_root_path: str) -> str:
@@ -240,3 +245,7 @@ def get_features_target(dataset: Dataset, target_col: str) -> Tuple[Dataset, Dat
     X: Dataset = dataset.select([c for c in dataset.columns if c != target_col])
     y: Dataset = dataset.select([target_col])
     return X, y
+
+
+def resolve_dataset_source(conf: SourceConfig) -> DatasetSourceWrapper:
+    return DatasetSourceWrapper.load_from_path(SOURCE_TO_MODULE[conf.type])(**conf.get_config.model_dump())

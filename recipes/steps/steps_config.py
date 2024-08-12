@@ -1,8 +1,9 @@
+from abc import abstractmethod
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from recipes.enum import ScoreType
+from recipes.enum import ScoreType, SourceType
 from recipes.interfaces.config import BaseStepConfig
 
 
@@ -54,8 +55,40 @@ class BaseEvaluateConfig(BaseStepConfig):
     validation_criteria: List[EvaluateCriteria]
 
 
+class SourceConfig(BaseModel):
+    type: SourceType
+
+    @property
+    @abstractmethod
+    def get_config(self) -> BaseModel:
+        pass
+
+
+class SqlConfig(BaseModel):
+    hostname: str
+    port: str
+    user: str
+    database_name: str
+    table_name: str
+
+
+class SqlAlchemyBasedSourceConfig(SourceConfig):
+    config: SqlConfig
+
+    @property
+    def get_config(self) -> BaseModel:
+        return self.config
+
+    @field_validator('type')
+    @classmethod
+    def check_type(cls, type: SourceType):
+        if type != SourceType.SQL_ALCHEMY_BASED:
+            raise ValueError(f'Type must be equal to {SourceType.SQL_ALCHEMY_BASED} for {cls.__class__.__name__}')
+        return type
+
+
 class BaseRegisterConfig(BaseStepConfig):
     register_fn: str
     artifact_path: str
     registered_model_name: Optional[str]
-    dataset_location: Optional[str]
+    source: SqlAlchemyBasedSourceConfig

@@ -95,3 +95,6 @@ class ClassificationStepsConfig(BaseStepsConfig):
 
 class ClassificationRecipeConfig(BaseRecipeConfig):
     steps: ClassificationStepsConfig
+
+    def get_steps(self) -> BaseStepsConfig:
+        return self.steps

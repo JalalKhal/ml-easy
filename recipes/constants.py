@@ -1,4 +1,4 @@
-from recipes.enum import FilterType
+from recipes.enum import FilterType, SourceType
 
 STEPS_SUBDIRECTORY_NAME = 'steps'
 STEP_OUTPUTS_SUBDIRECTORY_NAME = 'outputs'
@@ -14,4 +14,10 @@ SUFFIX_FN = '_fn'
 FILTER_TO_MODULE = {
     FilterType['EQUAL']: 'recipes.steps.transform.filters.EqualFilter',
     FilterType['IN']: 'recipes.steps.transform.filters.InFilter',
+}
+
+SOURCE_TO_MODULE = {
+    SourceType[
+        'SQL_ALCHEMY_BASED'
+    ]: 'recipes.steps.register.mlflow_source.sql_table_dataset_source.SQLTableDatasetSource'
 }

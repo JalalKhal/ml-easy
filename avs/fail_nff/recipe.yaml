@@ -27,13 +27,13 @@
     # Specifies the dataset to use for model development
     ingest:
         ingest_fn: "ingest_fn"
-        table_name: "sru_dataset"
+        table_name: &table_name "sru_dataset"
         credentials:
-            username: "postgres"
+            username: &db_username "postgres"
             password: "postgres123"
-            hostname: "192.168.1.65"
-            port: "5433"
-            database_name: "ingest"
+            hostname: &db_hostname "192.168.1.65"
+            port: &db_port "5433"
+            database_name: &db_database_name "ingest"
     split:
         split_fn: "split_fn"
         split_ratios: [ 0.75, 0.125, 0.125 ]
@@ -140,7 +140,15 @@
         register_fn: "register_fn"
         artifact_path: "sklearn-model"
         registered_model_name: "registered_model_name"
-        dataset_location: "/home/khaldi/Documents/github_repos/refined_mlflow/avs/fail_nff/sru_datatset.csv"
+        source:
+            type: 'sql_alchemy_based'
+            config:
+                hostname: *db_hostname
+                port: *db_port
+                user: *db_username
+                database_name: *db_database_name
+                table_name: *table_name
+
 
 
 

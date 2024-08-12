@@ -42,7 +42,7 @@ class BaseRecipe(abc.ABC, Generic[U]):
 
     def _resolve_recipe_steps(self) -> List[BaseStep]:
         steps: List[BaseStep] = []
-        for step_name in self._conf.steps.model_fields.keys():
+        for step_name in self._conf.get_steps().model_fields.keys():
             step_class: Type[BaseStep] = self.recipe_steps[step_name]
             step_config: BaseStepConfig = getattr(self._conf.steps, step_name)
             steps.append(step_class(step_config, self._conf.context))

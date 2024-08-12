@@ -65,3 +65,7 @@ class ScoreType(Enum):
 class FilterType(Enum):
     EQUAL = 'EqualFilter'
     IN = 'InFilter'
+
+
+class SourceType(Enum):
+    SQL_ALCHEMY_BASED = 'sql_alchemy_based'

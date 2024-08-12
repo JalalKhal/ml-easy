@@ -7,6 +7,7 @@ This module defines the following routines used by the 'transform' step of the r
 
 from recipes.classification.v1.config import ClassificationTransformConfig
 from recipes.interfaces.config import Context
+from recipes.steps.transform.filters import Filter
 from recipes.steps.transform.transformer import (
     FormaterTransformer,
     MultipleTfIdfTransformer,
@@ -25,6 +26,7 @@ def transformer_fn(conf: ClassificationTransformConfig, context: Context) -> Tra
     return PipelineTransformer([FormaterTransformer(conf), MultipleTfIdfTransformer(conf, context)])
 
 
+Filter.load_from_path
 """
 FilterTransformer(
                 {

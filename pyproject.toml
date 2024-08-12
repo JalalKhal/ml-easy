@@ -25,6 +25,7 @@ nltk = "^3.8.1"
 starlette = "^0.38.2"
 types-regex = "^2024.7.24.20240726"
 psycopg2-binary = "^2.9.9"
+types-psycopg2 = "^2.9.21.20240417"
 
 
 [build-system]

@@ -21,14 +21,16 @@ from typing import (
 import numpy as np
 import pandas as pd
 import polars as pl
+from mlflow.data import DatasetSource  # type: ignore
 from mlflow.data.dataset import Dataset as MLflowDataset  # type: ignore
-from pandas import DataFrame, Series
+from mlflow.types.utils import _infer_schema
 from polars._typing import ConcatMethod, IntoExpr, SchemaDict
 from scipy.sparse import csr_matrix, hstack, vstack  # type: ignore
 from sqlalchemy import create_engine
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
+from recipes.steps.steps_config import SourceConfig
 from recipes.steps.transform.filters import EqualFilter, InFilter
 
 _logger = logging.getLogger(__name__)
@@ -147,7 +149,7 @@ class Dataset(ABC, Generic[V]):
         pass
 
     @abstractmethod
-    def get_mlflow_dataset(self, source: str) -> MLflowDataset:
+    def get_mlflow_dataset(self, conf: SourceConfig) -> MLflowDataset:
         pass
 
 
@@ -211,7 +213,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         rechunk: bool = True,
         nan_to_null: bool = True,
         include_index: bool = False,
-    ) -> DataFrame | Series:
+    ) -> Self:
         return cls(
             pl.from_pandas(
                 data,
@@ -313,16 +315,14 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
             hasher.update(row_hash.to_bytes(64, 'little'))
         return hasher.digest().hex()
 
-    def get_mlflow_dataset(self, source: str) -> MLflowDataset:
-        from mlflow.data.dataset_source_registry import (  # type: ignore
-            resolve_dataset_source,
-        )
+    def get_mlflow_dataset(self, conf: SourceConfig) -> MLflowDataset:
+        from recipes.utils import resolve_dataset_source
 
         class PolarsMLFlowDataset(MLflowDataset):
             def __init__(self, ds: PolarsDataset):
-                nonlocal source
+                nonlocal conf
                 self.dataset = ds
-                source = resolve_dataset_source(source)
+                source: DatasetSource = resolve_dataset_source(conf)
                 name = f"PolarsDataset_{self.dataset.shape[0]}x{self.dataset.shape[1]}"
                 super().__init__(source=source, name=name)
                 self.columns = self.dataset.columns
@@ -337,6 +337,8 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
                         'shape': str(self.dataset.shape),
                         'columns': str(self.columns),
                         'dtypes': str({col: str(dtype) for col, dtype in zip(self.columns, self.dataset.dtypes)}),
+                        'schema': str(self.schema),
+                        'profile': str(self.profile),
                     }
                 )
                 return base_dict
@@ -351,7 +353,7 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
 
             @property
             def schema(self) -> Optional[Any]:
-                return {col: str(dtype) for col, dtype in zip(self.dataset.columns, self.dataset.dtypes)}
+                return _infer_schema(self.dataset.to_pandas())
 
         return PolarsMLFlowDataset(self)
 
@@ -443,14 +445,14 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
         m.update(self.service.data.tobytes())
         return m.hexdigest()
 
-    def get_mlflow_dataset(self, source: str) -> MLflowDataset:
-        from mlflow.data.dataset_source_registry import resolve_dataset_source
+    def get_mlflow_dataset(self, conf: SourceConfig) -> MLflowDataset:
+        from recipes.utils import resolve_dataset_source
 
         class CsrMatrixMLFlowDataset(MLflowDataset):
             def __init__(self, ds: CsrMatrixDataset):
-                nonlocal source
+                nonlocal conf
                 self.dataset = ds
-                source = resolve_dataset_source(source)
+                source = resolve_dataset_source(conf)
                 name = f"CsrMatrix_{self.dataset.shape[0]}x{self.dataset.shape[1]}"
                 super().__init__(source, name)
 
@@ -464,6 +466,8 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
                         'shape': str(self.dataset.shape),
                         'nnz': str(self.dataset.service.nnz),
                         'dtype': str(self.dataset.service.dtype),
+                        'schema': str(self.schema),
+                        'profile': str(self.profile),
                     }
                 )
                 return base_dict
@@ -479,6 +483,6 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
 
             @property
             def schema(self) -> Optional[Any]:
-                return None
+                return _infer_schema(self.dataset.to_numpy())
 
         return CsrMatrixMLFlowDataset(self)

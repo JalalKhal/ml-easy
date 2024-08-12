@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 import mlflow  # type:ignore
+from mlflow.data.code_dataset_source import CodeDatasetSource  # type: ignore
 from mlflow.models import infer_signature  # type:ignore
 
 from recipes.interfaces.config import Context
@@ -38,8 +39,8 @@ class MlflowRegistry(Registry):
 
     def log_dataset(self, message: StepMessage) -> None:
         (X, y) = message.transform.tf_dataset  # type: ignore
-        mlflow.log_input(X.get_mlflow_dataset(self.conf.dataset_location))  # type: ignore
-        mlflow.log_input(y.get_mlflow_dataset(self.conf.dataset_location))  # type: ignore
+        mlflow.log_input(X.get_mlflow_dataset(self.conf.source))  # type: ignore
+        mlflow.log_input(y.get_mlflow_dataset(self.conf.source))  # type: ignore
 
     def log_model(self, message: StepMessage) -> None:
         mlflow.set_tracking_uri(self.context.experiment.tracking_uri)  # type:ignore

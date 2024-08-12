@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 from pydantic import BaseModel
 
 
@@ -24,7 +26,11 @@ class Context(BaseModel):
 class BaseRecipeConfig(BaseModel):
     recipe: str
     context: Context
-    steps: BaseStepsConfig
+
+    @property
+    @abstractmethod
+    def get_steps(self) -> BaseStepsConfig:
+        pass
 
 
 class BaseCard(BaseModel):
