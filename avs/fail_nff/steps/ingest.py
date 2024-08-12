@@ -11,4 +11,6 @@ from recipes.steps.ingest.datasets import Dataset, PolarsDataset
 
 
 def ingest_fn(conf: ClassificationIngestConfig, context: Context) -> Dataset:
-    return PolarsDataset.read_csv(conf.location, conf.sep, conf.encoding).drop_nulls(context.target_col)
+    return PolarsDataset.from_sql_database(conf.table_name, conf.credentials.model_dump()).drop_nulls(
+        context.target_col
+    )

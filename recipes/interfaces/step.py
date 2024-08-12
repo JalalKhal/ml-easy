@@ -4,19 +4,24 @@ import logging
 import os
 import time
 import traceback
-from typing import Dict, Any, Optional, TypeVar, Generic, Type
+from typing import Any, Dict, Generic, Optional, Type, TypeVar
 
-from recipes.enum import StepExecutionStateKeys, StepStatus, MLFlowErrorCode
+from recipes.constants import CUSTOM_STEPS_DIR, EXECUTION_STATE_FILE_NAME, SUFFIX_FN
+from recipes.enum import MLFlowErrorCode, StepExecutionStateKeys, StepStatus
 from recipes.exceptions import MlflowException
-from recipes.interfaces.config import Context, BaseStepConfig, BaseCard
+from recipes.interfaces.config import BaseCard, BaseStepConfig, Context
 from recipes.steps.cards_config import StepMessage
-from recipes.utils import get_fully_qualified_module_name_for_step, load_step_function, get_step_fn, \
-    get_step_output_path
+from recipes.utils import (
+    get_fully_qualified_module_name_for_step,
+    get_step_fn,
+    get_step_output_path,
+    load_step_function,
+)
 
 _logger = logging.getLogger(__name__)
 
-U = TypeVar('U', bound="BaseStepConfig")
-V = TypeVar('V', bound="BaseCard")
+U = TypeVar('U', bound='BaseStepConfig')
+V = TypeVar('V', bound='BaseCard')
 
 
 class StepExecutionState:
@@ -49,7 +54,7 @@ class StepExecutionState:
         }
 
     @classmethod
-    def from_dict(cls, state_dict) -> "StepExecutionState":
+    def from_dict(cls, state_dict) -> 'StepExecutionState':
         """
         Creates a ``StepExecutionState`` instance from the specified execution state dictionary.
         """
@@ -64,10 +69,6 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     """
     Base class representing a step in an MLflow Recipe
     """
-
-    _EXECUTION_STATE_FILE_NAME = "execution_state.json"
-    _CUSTOM_STEPS_DIR = "steps"
-    _SUFFIX_FN = "_fn"
 
     def __init__(self, step_config: U, context: Context):
         """
@@ -118,20 +119,18 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     def _run(self, message: StepMessage) -> StepMessage:
         pass
 
-    def _update_status(
-            self, status: StepStatus, output_directory: str, stack_trace: Optional[str] = None
-    ) -> None:
-        execution_state = StepExecutionState(
-            status=status, last_updated_timestamp=time.time(), stack_trace=stack_trace
-        )
-        with open(os.path.join(output_directory, BaseStep._EXECUTION_STATE_FILE_NAME), "w") as f:
+    @classmethod
+    def _update_status(cls, status: StepStatus, output_directory: str, stack_trace: Optional[str] = None) -> None:
+        execution_state = StepExecutionState(status=status, last_updated_timestamp=time.time(), stack_trace=stack_trace)
+        with open(os.path.join(output_directory, EXECUTION_STATE_FILE_NAME), 'w') as f:
             json.dump(execution_state.to_dict(), f)
 
     def get_step_result(self, from_fn=True) -> Any:
         if from_fn:
-            step_fn = get_step_fn(self.conf, self._SUFFIX_FN)
-            step_result: Any = load_step_function(self.get_module_name_for_step_function(), step_fn)(self.conf,
-                                                                                                     self.context)
+            step_fn = get_step_fn(self.conf, SUFFIX_FN)
+            step_result: Any = load_step_function(self.get_module_name_for_step_function(), step_fn)(
+                self.conf, self.context
+            )
             return step_result
 
     @classmethod
@@ -147,10 +146,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         return self.card_type()(step_output_path=step_output_path)
 
     def get_module_name_for_step_function(self) -> str:
-        return get_fully_qualified_module_name_for_step(
-            self.context.recipe_root_path,
-            self._CUSTOM_STEPS_DIR,
-            self.name)
+        return get_fully_qualified_module_name_for_step(self.context.recipe_root_path, CUSTOM_STEPS_DIR, self.name)
 
     def update_message(self, message: StepMessage) -> None:
         setattr(message, self.name, self.card)
@@ -163,5 +159,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
     def validate_previous_step(self, message: StepMessage) -> None:
         if self.previous_step_name is not None:
             if getattr(message, self.previous_step_name) is None:
-                raise MlflowException(f"Previous step {self.previous_step_name} does not exist for step {self.name}.",
-                                      error_code=MLFlowErrorCode.INTERNAL_ERROR)
+                raise MlflowException(
+                    f"Previous step {self.previous_step_name} does not exist for step {self.name}.",
+                    error_code=MLFlowErrorCode.INTERNAL_ERROR,
+                )

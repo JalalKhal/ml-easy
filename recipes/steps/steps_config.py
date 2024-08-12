@@ -11,11 +11,18 @@ class RecipePathsConfig(BaseModel):
     profile: Optional[str] = None
 
 
+class SQLCredentialsConfig(BaseModel):
+    username: str
+    password: str
+    hostname: str
+    port: str
+    database_name: str
+
+
 class BaseIngestConfig(BaseStepConfig):
     ingest_fn: str
-    location: str
-    sep: str
-    encoding: str
+    table_name: str
+    credentials: SQLCredentialsConfig
 
 
 class BaseSplitConfig(BaseStepConfig):

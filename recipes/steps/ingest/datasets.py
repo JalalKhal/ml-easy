@@ -22,8 +22,10 @@ import numpy as np
 import pandas as pd
 import polars as pl
 from mlflow.data.dataset import Dataset as MLflowDataset  # type: ignore
-from polars._typing import ConcatMethod, IntoExpr
+from pandas import DataFrame, Series
+from polars._typing import ConcatMethod, IntoExpr, SchemaDict
 from scipy.sparse import csr_matrix, hstack, vstack  # type: ignore
+from sqlalchemy import create_engine
 
 from recipes.enum import MLFlowErrorCode
 from recipes.exceptions import MlflowException
@@ -199,6 +201,38 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
         data: np.ndarray[Any, Any],
     ) -> Self:
         return cls(pl.from_numpy(data))
+
+    @classmethod
+    def from_pandas(
+        cls,
+        data: pd.DataFrame,
+        *,
+        schema_overrides: SchemaDict | None = None,
+        rechunk: bool = True,
+        nan_to_null: bool = True,
+        include_index: bool = False,
+    ) -> DataFrame | Series:
+        return cls(
+            pl.from_pandas(
+                data,
+                schema_overrides=schema_overrides,
+                rechunk=rechunk,
+                nan_to_null=nan_to_null,
+                include_index=include_index,
+            )
+        )
+
+    @classmethod
+    def from_sql_database(cls, table_name: str, credentials: Dict[str, str]) -> Self:
+        username = credentials['username']
+        password = credentials['password']
+        hostname = credentials['hostname']
+        database_name = credentials['database_name']
+        port = credentials['port']
+        connection_string = f'postgresql+psycopg2://{username}:{password}@{hostname}:{port}/{database_name}'
+        engine = create_engine(connection_string)
+        query = f"SELECT * FROM {table_name}"
+        return cls.from_pandas(pd.read_sql(query, engine))
 
     @classmethod
     def concat(
