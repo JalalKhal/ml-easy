@@ -1,9 +1,9 @@
-import abc
 import json
 import logging
 import os
 import time
 import traceback
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Optional, Type, TypeVar
 
 from recipes.constants import CUSTOM_STEPS_DIR, EXECUTION_STATE_FILE_NAME, SUFFIX_FN
@@ -65,7 +65,7 @@ class StepExecutionState:
         )
 
 
-class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
+class BaseStep(Generic[U, V], ABC):
     """
     Base class representing a step in an MLflow Recipe
     """
@@ -84,7 +84,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         return f"Step:{self.name}"
 
     @property
-    @abc.abstractmethod
+    @abstractmethod
     def name(self) -> str:
         """
         Returns back the name of the step for the current class instance. This is used
@@ -92,7 +92,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         """
 
     @classmethod
-    @abc.abstractmethod
+    @abstractmethod
     def card_type(cls) -> Type[V]:
         """
         Returns the type of card to be created for the step.
@@ -115,7 +115,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
             )
             raise
 
-    @abc.abstractmethod
+    @abstractmethod
     def _run(self, message: StepMessage) -> StepMessage:
         pass
 
@@ -152,7 +152,7 @@ class BaseStep(Generic[U, V], metaclass=abc.ABCMeta):
         setattr(message, self.name, self.card)
 
     @property
-    @abc.abstractmethod
+    @abstractmethod
     def previous_step_name(self) -> Optional[str]:
         pass
 

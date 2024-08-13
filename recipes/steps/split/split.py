@@ -1,5 +1,6 @@
 import logging
-from typing import TypeVar, Generic, Type, Optional
+from abc import ABC
+from typing import Generic, Optional, Type, TypeVar
 
 from recipes.interfaces.config import Context
 from recipes.interfaces.step import BaseStep
@@ -8,10 +9,10 @@ from recipes.steps.steps_config import BaseSplitConfig
 
 _logger = logging.getLogger(__name__)
 
-U = TypeVar("U", bound="BaseSplitConfig")
+U = TypeVar('U', bound='BaseSplitConfig')
 
 
-class SplitStep(BaseStep[U, SplitCard], Generic[U]):
+class SplitStep(BaseStep[U, SplitCard], Generic[U], ABC):
 
     def __init__(self, split_config: U, context: Context):
         super().__init__(split_config, context)
