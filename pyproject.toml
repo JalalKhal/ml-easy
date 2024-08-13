@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "refined-mlflow"
+name = "ml-easy"
 version = "0.1.0"
 description = ""
 authors = ["jalal <jalalkhaldi3@gmail.com>"]
@@ -21,9 +21,13 @@ mlflow = "^2.15.0"
 typeguard = "^4.3.0"
 types-requests = "^2.32.0.20240712"
 regex = "^2024.7.24"
-nltk = "^3.8.1"
+nltk = "3.8.1"
 starlette = "^0.38.2"
 types-regex = "^2024.7.24.20240726"
+psycopg2-binary = "^2.9.9"
+pytest = "^8.3.2"
+types-pyyaml = "^6.0.12.20240808"
+pandas-stubs = "^2.2.2.240807"
 
 
 [build-system]

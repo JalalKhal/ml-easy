@@ -1,1 +1,1 @@
-refined-mlflow project
+ml-easy project
