@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="Poetry (refined-mlflow)" />
+    <option name="sdkName" value="Poetry (ml-easy)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (refined_mlflow)" project-jdk-type="Python SDK" />
-  <component name="PyCharmDSProjectLayout">
-    <option name="id" value="JupyterRightHiddenStructureLayout" />
-  </component>
-  <component name="PythonCompatibilityInspectionAdvertiser">
-    <option name="version" value="3" />
-  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (ml-easy)" project-jdk-type="Python SDK" />
 </project>
