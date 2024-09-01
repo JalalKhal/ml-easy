@@ -98,7 +98,7 @@ class Dataset(ABC, Generic[V]):
         pass
 
     @abstractmethod
-    def filter(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]) -> Self:
+    def filter(self, filters: Dict[str, List[Union[EqualFilter[str], InFilter[str]]]]) -> Self:
         pass
 
     @abstractmethod
@@ -272,14 +272,19 @@ class PolarsDataset(Dataset[pl.DataFrame | pl.LazyFrame]):
     ) -> Self:
         return self.__class__(self.service.drop_nulls(subset))
 
-    def filter(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]) -> Self:
+    def filter(self, filters: Dict[str, List[Union[EqualFilter[str], InFilter[str]]]]) -> Self:
         from ml_easy.recipes.utils import is_instance_for_generic
 
         def _get_expr_filter(col_filter: Union[EqualFilter[str], InFilter[str]]):
+
             if is_instance_for_generic(col_filter, EqualFilter[str]):
-                return pl.col(col) == col_filter.value  # type:ignore
+                return (
+                    ~(pl.col(col) == col_filter.value) if col_filter.neg else pl.col(col) == col_filter.value
+                )  # type:ignore
             elif is_instance_for_generic(col_filter, InFilter[str]):
-                return pl.col(col).is_in(col_filter.values)  # type:ignore
+                return (
+                    ~(pl.col(col).is_in(col_filter.values)) if col_filter.neg else pl.col(col).is_in(col_filter.values)
+                )  # type:ignore
             else:
                 raise MlflowException(
                     message=f'Unsupported filter type {col_filter.__class__.__name__}',
@@ -400,7 +405,7 @@ class CsrMatrixDataset(Dataset[csr_matrix]):
     def collect(self) -> Self:
         return self
 
-    def filter(self, filters: Dict[str, Optional[List[Union['EqualFilter[str]', 'InFilter[str]']]]]) -> Self:
+    def filter(self, filters: Dict[str, List[Union['EqualFilter[str]', 'InFilter[str]']]]) -> Self:
         raise NotImplementedError('Filtering not implemented for CSR matrices.')
 
     def drop_nulls(self, subset: Union[str, List[str], None] = None) -> Self:

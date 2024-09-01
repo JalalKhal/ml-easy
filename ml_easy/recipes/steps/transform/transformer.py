@@ -1,8 +1,11 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, Protocol, Self, TypeVar, Union
+from enum import Enum
+from typing import Any, Dict, Generic, List, Protocol, Self, Tuple, TypeVar, Union
 
 from ml_easy.recipes.classification.v1.config import ClassificationTransformConfig
+from ml_easy.recipes.enum import MLFlowErrorCode
+from ml_easy.recipes.exceptions import MlflowException
 from ml_easy.recipes.interfaces.config import Context
 from ml_easy.recipes.steps.ingest.datasets import CsrMatrixDataset, Dataset
 from ml_easy.recipes.steps.transform.filters import EqualFilter, InFilter
@@ -92,7 +95,7 @@ class MultipleTfIdfTransformer(Transformer):
 
 
 class FilterTransformer(Transformer):
-    def __init__(self, filters: Dict[str, Optional[List[Union[EqualFilter[str], InFilter[str]]]]]):
+    def __init__(self, filters: Dict[str, List[Union[EqualFilter[str], InFilter[str]]]]):
         super().__init__()
         self.filters = filters
 
@@ -129,17 +132,39 @@ class FormaterTransformer(Transformer):
         return X.map_str({col: func(col) for col in self.config.cols if self.config.cols[col].formatter})
 
 
-class PipelineTransformer(Transformer):
-    def __init__(self, transformers: List[Transformer]):
+class MLPipelineTransformer(Transformer):
+    class Mode(Enum):
+        TRAIN = 'train'
+        INFER = 'infer'
+
+    def __init__(self, transformers: List[Tuple[Transformer, bool]], mode: Mode):
         super().__init__()
         self._transformers = transformers
+        self._mode = mode
+
+    def set_mode(self, mode: Mode) -> None:
+        self._mode = mode
 
     def fit(self, X: Dataset) -> None:
+        if self._mode != self.Mode.TRAIN:
+            raise MlflowException(
+                f"{self._mode} for {self.__class__.__name__} should be equal to {self.Mode.TRAIN}",
+                error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+            )
         for transformer in self._transformers[:-1]:
-            X = transformer.fit_transform(X)
-        self._transformers[-1].fit(X)
+            X = transformer[0].fit_transform(X)
+        self._transformers[-1][0].fit(X)
 
     def transform(self, X: Dataset) -> Dataset:
-        for transformer in self._transformers:
-            X = transformer.transform(X)
+        if self._mode == self.Mode.TRAIN:
+            transformers = self._transformers
+        elif self._mode == self.Mode.INFER:
+            transformers = [t for t in self._transformers if t[1]]
+        else:
+            raise MlflowException(
+                f"{self._mode} for {self.__class__.__name__} should be equal to {self.Mode.TRAIN}",
+                error_code=MLFlowErrorCode.INVALID_PARAMETER_VALUE,
+            )
+        for transformer in transformers:
+            X = transformer[0].transform(X)
         return X
