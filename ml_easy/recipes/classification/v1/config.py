@@ -59,9 +59,9 @@ class LibraryEmbedder(BaseModel):
 
 
 class ColConfig(BaseModel):
-    embedder: Optional[LibraryEmbedder]
-    formatter: Optional[TextFormatterConfig]
-    filters: Optional[List[Union[EqualFilterConfig, InFilterConfig]]]
+    embedder: Optional[LibraryEmbedder] = None
+    formatter: Optional[TextFormatterConfig] = None
+    filters: Optional[List[Union[EqualFilterConfig, InFilterConfig]]] = None
 
 
 class ClassificationTransformConfig(BaseTransformConfig):
