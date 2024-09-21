@@ -62,6 +62,7 @@ class RecipeYAMLoader(YamlLoader):
                 return json.load(f)
 
         j2_env.filters['from_json'] = from_json
+        j2_env.filters['env'] = lambda key: os.environ.get(key)
         # Compute final source of context file (e.g. my-profile.yml), applying Jinja filters
         # like from_json as needed to load context information from files, then load into a dict
         context = j2_env.get_template(context_name).render({})
